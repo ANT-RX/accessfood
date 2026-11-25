@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="es" class="tema-vibrante">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#d6246e">
+<title>accessfood</title>
+<meta name="description" content="accessfood: prototipo académico para encontrar y reservar restaurantes accesibles en Puebla para personas con discapacidad, embarazadas, familias con niños pequeños y adultos mayores.">
+<meta property="og:title" content="accessfood · Restaurantes accesibles en Puebla">
+<meta property="og:description" content="Prototipo académico: busca restaurantes aptos para ti, reserva y recibe la confirmación.">
+<meta property="og:type" content="website">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="accessfood">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<script src="vendor/leaflet/leaflet.js"></script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ff2d6f'/%3E%3Cstop offset='1' stop-color='%237b2ff7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='9' fill='url(%23g)'/%3E%3Cpath d='M11 7v7a2 2 0 0 0 2 2v9M13 7v5M15 7v7a2 2 0 0 1-2 2M22 25V7c-2 1-3.5 3-3.5 6v4H22' stroke='white' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* =====================================================================
+   accessfood · prototipo web en un solo archivo
+   Texto grande, contraste alto, áreas táctiles ≥ 48 px, foco visible.
+   ===================================================================== */
+:root {
+  --fondo: #f4f5fb; --superficie: #fff; --superficie-2: #eef0f8; --texto: #161827; --texto-suave: #4b5168;
+  --borde: #d9dceb; --borde-fuerte: #8a90a8;
+  --ok: #14632f; --ok-fondo: #dcf5e3; --aviso: #8a4b00; --aviso-fondo: #fff1d6;
+  --error: #b01d1d; --error-fondo: #fde4e4; --info: #1d4f91; --info-fondo: #e0ecfb;
+  --foco: #f59e0b; --radio: 18px; --radio-s: 12px;
+  --sombra: 0 1px 2px rgb(16 24 40 / .06), 0 6px 18px rgb(16 24 40 / .07);
+  --sombra-alta: 0 14px 36px rgb(16 24 40 / .18);
+  --fuente: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+html.tema-vibrante {
+  --primario: #b0125b; --primario-oscuro: #860b44; --primario-claro: #fde4ef; --activo: #c8105f; --activo-fondo: #ffe1ee;
+  --onda: #ffc531; --cubiertos: #e0115f; --franja: linear-gradient(180deg, #ff2d6f, #8e2de2);
+  --cab: radial-gradient(circle at 8% 15%, #7b2ff7 0, transparent 40%), radial-gradient(circle at 92% 8%, #ff7a18 0, transparent 34%),
+         radial-gradient(circle at 98% 95%, #ffb000 0, transparent 26%), linear-gradient(105deg, #8e2de2 0%, #d6246e 42%, #f0306f 62%, #f2552e 100%);
+}
+html.tema-azul {
+  --primario: #1650c8; --primario-oscuro: #0f3a94; --primario-claro: #e2ebff; --activo: #1650c8; --activo-fondo: #e2ebff;
+  --onda: #7fe8ff; --cubiertos: #1650c8; --franja: linear-gradient(180deg, #00c6ff, #1d4ed8);
+  --cab: linear-gradient(100deg, #0086b3 0%, #1478e0 45%, #1d4ed8 100%);
+}
+html.alto-contraste {
+  --fondo: #fff; --superficie: #fff; --superficie-2: #fff; --texto: #000; --texto-suave: #1a1a1a; --borde: #000; --borde-fuerte: #000;
+  --primario: #00267a; --primario-oscuro: #001a55; --primario-claro: #e6ecff; --activo: #00267a; --activo-fondo: #e6ecff;
+  --cab: #000; --onda: #ffd400; --sombra: none;
+}
+html.alto-contraste .panel, html.alto-contraste .lugar__foto, html.alto-contraste input, html.alto-contraste textarea, html.alto-contraste select,
+html.alto-contraste .opcion, html.alto-contraste .tarjeta-reserva { border: 2px solid #000 !important; }
+html { font-size: 106.25%; -webkit-text-size-adjust: 100%; }
+html.texto-grande { font-size: 118.75%; }
+html.texto-muy-grande { font-size: 131.25%; }
+@media (min-width: 900px) { html { font-size: 112.5%; } html.texto-grande { font-size: 125%; } html.texto-muy-grande { font-size: 140%; } }
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+body { margin: 0; font-family: var(--fuente); line-height: 1.5; color: var(--texto); background: var(--fondo); min-height: 100vh; }
+h1, h2, h3 { line-height: 1.22; margin: 0 0 .5rem; }
+h1 { font-size: 1.6rem; } h2 { font-size: 1.25rem; } h3 { font-size: 1.08rem; }
+p { margin: 0 0 .7rem; }
+a { color: var(--primario); text-underline-offset: 3px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+img { max-width: 100%; display: block; }
+:focus-visible { outline: 3px solid var(--foco); outline-offset: 3px; border-radius: 6px; }
+.oculto { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: -1px; }
+.saltar { position: absolute; left: 1rem; top: -5rem; z-index: 200; background: var(--primario); color: #fff; padding: .75rem 1.2rem; border-radius: var(--radio-s); font-weight: 700; }
+.saltar:focus { top: 1rem; color: #fff; }
+.ico { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
+
+/* ---------- Cabecera ---------- */
+.cabecera { position: relative; color: #fff; background: var(--cab); padding: calc(env(safe-area-inset-top) + .8rem) 1rem 2.1rem; }
+.cabecera__fila { position: relative; max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+.logo { display: inline-flex; align-items: center; gap: .55rem; color: #fff; text-decoration: none; }
+.logo svg { width: 2.4rem; height: 2.8rem; filter: drop-shadow(0 3px 6px rgb(0 0 0 / .25)); }
+.logo .logo-pin { fill: #fff; } .logo .logo-cub { stroke: var(--cubiertos); }
+.logo__texto { position: relative; font-size: 2.1rem; font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+.logo__texto sup { font-size: .35em; font-weight: 600; }
+html.tema-vibrante .logo__texto::after { content: ""; position: absolute; left: 8%; right: 12%; bottom: -.5rem; height: .6rem; border-bottom: 4px solid #ffc531; border-radius: 0 0 50% 50%; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); width: min(100%, 30rem); margin: 0; background: rgb(0 0 0 / .17); border-radius: 16px; padding: .45rem .2rem; }
+.stats div { display: flex; flex-direction: column-reverse; align-items: center; text-align: center; padding: 0 .4rem; }
+.stats div + div { border-left: 2px solid rgb(255 255 255 / .5); }
+.stats dt { font-size: .82rem; font-weight: 600; display: flex; gap: .3rem; align-items: center; }
+.stats dd { margin: 0; font-size: 1.4rem; font-weight: 800; line-height: 1.15; }
+.campana { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: #fff; background: rgb(255 255 255 / .18); border: 2px solid rgb(255 255 255 / .5); }
+.campana .ico { width: 1.4rem; height: 1.4rem; }
+.campana.sacudir { animation: sacudir .6s ease; }
+@keyframes sacudir { 20%, 60% { transform: rotate(-12deg); } 40%, 80% { transform: rotate(12deg); } }
+.contador { display: inline-grid; place-items: center; min-width: 1.4rem; height: 1.4rem; padding: 0 .35rem; border-radius: 999px; font-size: .74rem; font-weight: 800; background: var(--primario-claro); color: var(--primario); }
+.campana .contador { position: absolute; top: -5px; right: -5px; background: #ffc531; color: #3b0a1f; border: 2px solid #fff; }
+.onda { position: absolute; left: 0; right: 0; bottom: -1px; width: 100%; height: 2.4rem; display: block; }
+.onda .l { fill: var(--onda); } .onda .f { fill: var(--fondo); }
+body:not([data-vista="inicio"]) .cabecera { padding-bottom: 1.5rem; }
+@media (max-width: 599px) { body[data-vista="inicio"] .logo { max-width: calc(100% - 6.6rem); } body[data-vista="inicio"] .logo__texto { font-size: 1.7rem; } body[data-vista="inicio"] .logo svg { width: 2rem; height: 2.4rem; } .stats dt { font-size: .72rem; } .stats dd { font-size: 1.25rem; } }
+.stats dt, .stats dd { white-space: nowrap; }
+body:not([data-vista="inicio"]) .cabecera__fila { flex-direction: row; justify-content: space-between; padding-right: 3.6rem; }
+body:not([data-vista="inicio"]) .logo svg { width: 1.9rem; height: 2.2rem; }
+body:not([data-vista="inicio"]) .logo__texto { font-size: 1.55rem; }
+body:not([data-vista="inicio"]) .stats { width: auto; }
+body:not([data-vista="inicio"]) .stats dd { font-size: 1.1rem; }
+body:not([data-vista="inicio"]) .stats dt { font-size: .7rem; }
+body:not([data-vista="inicio"]) .onda { height: 1.4rem; }
+@media (max-width: 599px) { body:not([data-vista="inicio"]) .stats { display: none; } }
+
+/* ---------- Estructura ---------- */
+main { max-width: 1240px; margin: 0 auto; padding: 1rem 1rem calc(7rem + env(safe-area-inset-bottom)); outline: none; }
+body[data-vista="buscar"] main { max-width: 1600px; }
+.pie { text-align: center; color: var(--texto-suave); font-size: .8rem; padding: 0 1rem 1rem; }
+.encabezado { margin-bottom: 1.1rem; }
+.subtitulo { color: var(--texto-suave); }
+.panel { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 1.15rem; box-shadow: var(--sombra); }
+.panel + .panel { margin-top: 1rem; }
+.panel__titulo { display: flex; align-items: center; gap: .55rem; font-size: 1.15rem; margin-bottom: .8rem; }
+.columnas { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); }
+.columnas > *, .panel { min-width: 0; }
+@media (min-width: 900px) {
+  main { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .columnas { grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.5rem; align-items: start; }
+  .columnas > aside { position: sticky; top: 1rem; }
+  h1 { font-size: 1.9rem; }
+}
+
+/* ---------- Botones y formularios ---------- */
+.boton { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 48px; padding: .55rem 1.1rem; border-radius: 14px; border: 2px solid transparent; font-weight: 700; text-decoration: none; cursor: pointer; background: none; }
+.boton:active { transform: translateY(1px); }
+.boton[disabled] { opacity: .5; cursor: not-allowed; }
+.boton--primario { background: var(--primario); color: #fff; }
+html.tema-vibrante .boton--primario { background: linear-gradient(135deg, #d6246e, #b0125b); }
+.boton--secundario { background: var(--superficie); color: var(--primario); border-color: var(--primario); }
+.boton--peligro { background: var(--superficie); color: var(--error); border-color: var(--error); }
+.boton--peligro-solido { background: var(--error); color: #fff; }
+.boton--texto { color: var(--primario); text-decoration: underline; padding-inline: .4rem; }
+.boton--ancho { width: 100%; } .boton--grande { min-height: 56px; font-size: 1.08rem; }
+.acciones { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .9rem; }
+.campo { display: flex; flex-direction: column; gap: .35rem; margin-bottom: .9rem; }
+label, legend { font-weight: 700; }
+fieldset { border: 0; padding: 0; margin: 0 0 .9rem; min-width: 0; }
+legend { margin-bottom: .5rem; padding: 0; }
+input[type="text"], input[type="tel"], input[type="email"], input[type="search"], input[type="number"], select, textarea {
+  border: 2px solid var(--borde-fuerte); border-radius: var(--radio-s); padding: .6rem .8rem; min-height: 50px; width: 100%; background: var(--superficie); }
+textarea { resize: vertical; }
+[aria-invalid="true"] { border-color: var(--error) !important; background: #fffafa; }
+.error { color: var(--error); font-weight: 700; margin: 0; }
+.error::before { content: "⚠ "; }
+.ayuda { color: var(--texto-suave); font-size: .9rem; font-weight: 400; }
+.opciones { display: grid; gap: .5rem; grid-template-columns: 1fr; }
+@media (min-width: 600px) { .opciones--2 { grid-template-columns: 1fr 1fr; } }
+.opcion { display: flex; align-items: flex-start; gap: .65rem; min-height: 50px; padding: .65rem .85rem; border: 1.5px solid var(--borde); border-radius: var(--radio-s); background: var(--superficie); cursor: pointer; font-weight: 500; }
+.opcion input { width: 1.35rem; height: 1.35rem; margin: .12rem 0 0; flex: none; accent-color: var(--primario); }
+.opcion:has(input:checked) { border-color: var(--primario); background: var(--primario-claro); }
+.opcion:has(input:focus-visible) { outline: 3px solid var(--foco); outline-offset: 2px; }
+.opcion small { display: block; color: var(--aviso); font-weight: 600; }
+.fila { display: flex; flex-wrap: wrap; gap: .5rem; }
+
+/* ---------- Mensajes y etiquetas ---------- */
+.mensaje { display: flex; gap: .7rem; align-items: flex-start; padding: .85rem 1rem; border-radius: var(--radio); border: 2px solid; font-weight: 600; margin-bottom: 1rem; }
+.mensaje p { margin: 0; } .mensaje .ico { width: 1.4rem; height: 1.4rem; }
+.mensaje--exito { background: var(--ok-fondo); color: var(--ok); }
+.mensaje--error { background: var(--error-fondo); color: var(--error); }
+.mensaje--aviso { background: var(--aviso-fondo); color: var(--aviso); }
+.aviso-proto { display: flex; gap: .65rem; align-items: flex-start; padding: .75rem .95rem; margin-bottom: 1rem; border-radius: var(--radio); border: 2px dashed var(--aviso); background: var(--aviso-fondo); color: #4a2a00; font-size: .88rem; }
+.aviso-proto .ico { color: var(--aviso); width: 1.3rem; height: 1.3rem; margin-top: .1rem; }
+.aviso-proto p { margin: 0; }
+.etiqueta { display: inline-flex; align-items: center; gap: .3rem; padding: .22rem .6rem; border-radius: 999px; font-size: .8rem; font-weight: 700; background: var(--superficie-2); color: var(--texto-suave); border: 1px solid var(--borde); }
+.etiqueta--ok { background: var(--ok-fondo); color: var(--ok); border-color: currentColor; }
+.etiqueta--aviso { background: var(--aviso-fondo); color: var(--aviso); border-color: currentColor; }
+.etiqueta--error { background: var(--error-fondo); color: var(--error); border-color: currentColor; }
+.etiqueta--info { background: var(--info-fondo); color: var(--info); border-color: currentColor; }
+.vacio { text-align: center; padding: 2.5rem 1rem; background: var(--superficie); border: 2px dashed var(--borde); border-radius: var(--radio); }
+.vacio .ico { width: 3rem; height: 3rem; color: var(--primario); margin-bottom: .6rem; }
+.vacio p { color: var(--texto-suave); }
+
+/* ---------- Banners (Inicio y Favoritos) ---------- */
+.banners { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr)); }
+.banner { position: relative; display: grid; grid-template-columns: 1fr 46%; grid-template-rows: 100%; height: 8.2rem; border-radius: 22px; overflow: hidden; background: #140b06; box-shadow: var(--sombra); isolation: isolate; }
+@media (min-width: 600px) { .banner { height: 9.5rem; } }
+.banner:focus-within { outline: 3px solid var(--foco); outline-offset: 3px; }
+.banner__foto { grid-area: 1 / 1 / 2 / 3; margin-right: 34%; min-height: 0; overflow: hidden; }
+.ilus { display: block; width: 100%; height: 100%; }
+.banner__panel { grid-area: 1 / 2 / 2 / 3; z-index: 1; background: var(--marca); clip-path: polygon(16% 0, 100% 0, 100% 100%, 0 100%); }
+.banner__marca { grid-area: 1 / 2 / 2 / 3; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem; padding: 0 .6rem 0 1.9rem; text-align: center; color: var(--acento); }
+.banner__enlace { color: inherit; text-decoration: none; }
+.banner__enlace::after { content: ""; position: absolute; inset: 0; z-index: 3; }
+.banner__enlace:focus-visible { outline: none; }
+.banner__nombre { display: block; font-size: 1.45rem; font-weight: 800; line-height: 1.03; }
+.banner__sub { font-size: .66rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; opacity: .92; }
+.estilo-script .banner__nombre { font-family: "Brush Script MT", "Segoe Script", "Apple Chancery", "URW Chancery L", cursive; font-style: italic; font-size: 1.75rem; }
+.estilo-serif .banner__nombre { font-family: Georgia, "Palatino Linotype", "Times New Roman", serif; font-style: italic; font-weight: 600; font-size: 1.6rem; }
+.estilo-bloque .banner__nombre { font-family: Impact, "Arial Black", "Franklin Gothic Heavy", sans-serif; text-transform: uppercase; font-weight: 900; letter-spacing: .02em; }
+.estilo-condensada .banner__nombre { font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif; font-stretch: condensed; text-transform: uppercase; letter-spacing: .05em; }
+.estilo-redonda .banner__nombre { font-family: "Trebuchet MS", Verdana, sans-serif; }
+.banner--largo .banner__nombre { font-size: 1.15rem !important; }
+.banner--largo.estilo-script .banner__nombre, .banner--largo.estilo-serif .banner__nombre { font-size: 1.35rem !important; }
+@media (min-width: 600px) { .banner__nombre { font-size: 1.75rem; } .estilo-script .banner__nombre { font-size: 2.1rem; } .estilo-serif .banner__nombre { font-size: 1.9rem; } .banner--largo .banner__nombre { font-size: 1.4rem !important; } .banner--largo.estilo-script .banner__nombre, .banner--largo.estilo-serif .banner__nombre { font-size: 1.65rem !important; } }
+html.tema-vibrante .banner::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8px; z-index: 4; background: var(--franja); }
+html.tema-vibrante .banner::after { content: ""; position: absolute; right: -18px; bottom: -22px; width: 140px; height: 44px; z-index: 4; border-top: 6px solid #ffc531; border-radius: 50%; transform: rotate(-10deg); pointer-events: none; }
+html.tema-azul .banner__panel { background: linear-gradient(90deg, rgb(18 12 8 / 0), #140d08 30%); clip-path: none; margin-left: -12%; }
+html.tema-azul .banner__marca { color: #fff; }
+html.tema-azul .banner__sub { border-top: 3px solid var(--marca); padding-top: .2rem; }
+.portada .banner { height: 11rem; }
+@media (min-width: 600px) { .portada .banner { height: 14rem; } }
+
+.fav { position: absolute; z-index: 5; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; border: 0; cursor: pointer; background: rgb(255 255 255 / .95); color: var(--activo); box-shadow: 0 2px 10px rgb(0 0 0 / .3); }
+.fav .ico { width: 1.4rem; height: 1.4rem; }
+.fav[aria-pressed="true"] .ico path { fill: currentColor; }
+.fav[aria-pressed="true"] { animation: latir .35s ease; }
+@keyframes latir { 50% { transform: scale(1.22); } }
+.banner .fav { top: .55rem; left: .9rem; }
+.tras-banner { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .9rem; margin: .55rem .2rem 0; }
+.tras-banner .ayuda { display: inline-flex; align-items: center; gap: .35rem; margin: 0; }
+
+.bienvenida { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem; margin-bottom: 1rem; }
+.bienvenida h1 { margin: 0; }
+.bienvenida .subtitulo { margin: .15rem 0 0; }
+.proxima { display: flex; gap: .8rem; align-items: center; padding: .85rem 1rem; margin-bottom: 1rem; border-radius: var(--radio); background: var(--superficie); border: 1px solid var(--borde); box-shadow: var(--sombra); color: var(--texto); text-decoration: none; }
+.proxima__ico { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; flex: none; border-radius: 50%; background: var(--primario-claro); color: var(--primario); }
+.titulo-seccion { font-size: 1.15rem; margin: 1.2rem 0 .8rem; }
+
+/* ---------- Buscar ---------- */
+.buscador { display: flex; align-items: center; gap: .4rem; padding: .3rem .3rem .3rem 1rem; background: var(--superficie); border: 1px solid var(--borde); border-radius: 999px; box-shadow: 0 6px 22px rgb(16 24 40 / .12); max-width: 46rem; margin: 0 auto .9rem; }
+.buscador .ico { width: 1.3rem; height: 1.3rem; color: var(--texto-suave); }
+.buscador input { border: 0 !important; min-height: 48px; padding: 0; background: transparent; }
+.buscador input:focus-visible { outline: none; }
+.buscador:focus-within { outline: 3px solid var(--foco); outline-offset: 2px; }
+.chips { display: flex; gap: .45rem; overflow-x: auto; padding: .15rem .1rem .55rem; scrollbar-width: thin; -webkit-overflow-scrolling: touch; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: .35rem; min-height: 46px; padding: .35rem .95rem; border: 1.5px solid var(--borde-fuerte); border-radius: 999px; background: var(--superficie); font-weight: 700; font-size: .92rem; cursor: pointer; white-space: nowrap; }
+.chip[aria-pressed="true"] { background: var(--texto); color: var(--superficie); border-color: var(--texto); }
+.chip[disabled] { opacity: .45; cursor: not-allowed; }
+.chip .contador { background: var(--texto); color: var(--superficie); }
+.chip[aria-pressed="true"] .contador { background: var(--superficie); color: var(--texto); }
+.chip select { border: 0; min-height: 0; padding: 0; background: transparent; font-weight: 700; width: auto; }
+.resumen-busqueda { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .3rem .8rem; margin: .4rem 0 .8rem; }
+.resumen-busqueda h2 { margin: 0; font-size: 1.12rem; }
+.ubicacion { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .4rem; margin: 0; color: var(--texto-suave); font-weight: 600; font-size: .92rem; }
+.ubicacion select { width: auto; min-height: 44px; padding: .3rem .6rem; font-weight: 700; }
+.segmentos { display: grid; grid-template-columns: 1fr 1fr; gap: .3rem; padding: .3rem; border-radius: 16px; background: var(--superficie-2); margin-bottom: .8rem; }
+.segmentos button { min-height: 46px; border: 0; border-radius: 12px; background: transparent; font-weight: 800; cursor: pointer; display: inline-flex; gap: .4rem; align-items: center; justify-content: center; }
+.segmentos button[aria-pressed="true"] { background: var(--superficie); color: var(--activo); box-shadow: var(--sombra); }
+.buscar { display: grid; gap: 1.2rem; }
+.buscar[data-modo="lista"] .buscar__mapa { display: none; }
+.buscar[data-modo="mapa"] .buscar__lista { display: none; }
+@media (min-width: 1000px) {
+  .segmentos { display: none; }
+  .buscar { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
+  .buscar[data-modo] .buscar__mapa, .buscar[data-modo] .buscar__lista { display: block; }
+  .buscar__mapa { position: sticky; top: 1rem; }
+}
+.lugares { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.3rem 1.1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); }
+.lugar { position: relative; display: flex; flex-direction: column; gap: .55rem; }
+.lugar__foto { position: relative; aspect-ratio: 16 / 10; border-radius: 18px; overflow: hidden; background: #140b06; box-shadow: var(--sombra); }
+.lugar.resaltado .lugar__foto { outline: 4px solid var(--activo); outline-offset: 2px; }
+.lugar__insignia { position: absolute; top: .6rem; left: .6rem; z-index: 2; display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .6rem; border-radius: 999px; background: rgb(255 255 255 / .95); color: #1f1f1f; font-size: .75rem; font-weight: 800; }
+.lugar__insignia .ico { color: var(--activo); }
+.lugar .fav { top: .45rem; right: .45rem; }
+.lugar__fila { display: flex; justify-content: space-between; gap: .5rem; align-items: flex-start; }
+.lugar h3 { margin: 0; font-size: 1.05rem; }
+.lugar h3 a { color: var(--texto); text-decoration: none; }
+.lugar h3 a::after { content: ""; position: absolute; inset: 0; z-index: 3; }
+.lugar h3 a:focus-visible { outline: none; }
+.lugar:focus-within .lugar__foto { outline: 3px solid var(--foco); outline-offset: 3px; }
+.lugar .fav { z-index: 6; }
+.estrella { display: inline-flex; align-items: center; gap: .2rem; font-weight: 800; white-space: nowrap; }
+.estrella .ico { color: #e59a0b; }
+.lugar__sub { margin: 0; color: var(--texto-suave); font-size: .92rem; }
+.lugar__beneficio { margin: 0; color: var(--primario); font-weight: 700; font-size: .9rem; }
+.lugar .etiqueta { align-self: flex-start; border-radius: var(--radio-s); }
+
+/* ---------- Mapa esquemático ---------- */
+.mapa { position: relative; height: min(68vh, 34rem); border-radius: 22px; overflow: hidden; border: 1px solid var(--borde); box-shadow: var(--sombra); background: #eef1e6; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+@media (min-width: 1000px) { .mapa { height: calc(100vh - 9rem); min-height: 28rem; } }
+.mapa.arrastrando { cursor: grabbing; }
+.mapa.marcando { cursor: crosshair; }
+.mapa__lienzo { position: absolute; inset: 0; z-index: 0; }
+.mapa__lienzo > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.mapa__lienzo.arrastrando { cursor: grabbing; }
+.mapa.marcando .mapa__lienzo, .mapa.marcando .leaflet-container { cursor: crosshair; }
+.leaflet-container { font-family: var(--fuente); background: #e8eef3; }
+.pin-contenedor { background: none; border: 0; }
+.leaflet-marker-icon:focus { outline: none; }
+.leaflet-marker-icon:focus .pin { outline: 3px solid var(--foco); outline-offset: 2px; background: #111; color: #fff; }
+.leaflet-marker-icon:focus .pin .pin__nombre { display: inline; }
+.leaflet-control-attribution { font-size: .7rem; }
+.mapa__pines { position: absolute; inset: 0; pointer-events: none; }
+.pin { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; display: inline-flex; align-items: center; gap: .25rem; min-height: 34px; padding: .2rem .6rem; border-radius: 999px; background: #fff; color: #111; border: 2px solid var(--pin, #999); box-shadow: 0 2px 10px rgb(0 0 0 / .28); font: 800 .82rem/1 var(--fuente); white-space: nowrap; cursor: pointer; }
+.pin__nombre { display: none; }
+.pin.activo, .pin:focus-visible { background: #111; color: #fff; z-index: 5; }
+.pin.activo .pin__nombre, .pin:focus-visible .pin__nombre { display: inline; }
+.pin-yo { position: absolute; width: 22px; height: 22px; transform: translate(-50%, -50%); border-radius: 50%; background: #1a73e8; border: 3px solid #fff; animation: pulso 2s infinite; pointer-events: none; }
+@keyframes pulso { 0% { box-shadow: 0 0 0 0 rgb(26 115 232 / .5); } 70% { box-shadow: 0 0 0 16px rgb(26 115 232 / 0); } 100% { box-shadow: 0 0 0 0 rgb(26 115 232 / 0); } }
+.mapa__controles { position: absolute; top: .7rem; right: .7rem; z-index: 10; display: flex; flex-direction: column; gap: .4rem; }
+.mapa__controles button { width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--borde); background: #fff; color: #111; font-size: 1.4rem; font-weight: 800; cursor: pointer; box-shadow: var(--sombra); display: grid; place-items: center; }
+.mapa__controles button[aria-pressed="true"] { background: #1a73e8; color: #fff; }
+.mapa__nota { position: absolute; left: .6rem; bottom: 1.6rem; z-index: 10; margin: 0; padding: .35rem .6rem; border-radius: 10px; background: rgb(255 255 255 / .92); font-size: .74rem; font-weight: 600; color: #333; max-width: 75%; }
+.ficha-mapa { position: absolute; left: .6rem; right: .6rem; bottom: 2.6rem; z-index: 12; background: #fff; color: #111; border-radius: 16px; padding: .8rem .9rem; box-shadow: var(--sombra-alta); }
+@media (min-width: 600px) { .ficha-mapa { left: auto; width: 20rem; } }
+.ficha-mapa strong { display: block; font-size: 1.05rem; }
+.ficha-mapa p { margin: .15rem 0 .5rem; color: #4b5168; font-size: .88rem; }
+.ficha-mapa .acciones { margin-top: .3rem; }
+.ficha-mapa .boton { min-height: 44px; padding: .3rem .8rem; font-size: .9rem; }
+.ficha-mapa__cerrar { position: absolute; top: .4rem; right: .4rem; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #eef0f8; cursor: pointer; font-size: 1.2rem; }
+.mapa--mini { height: 13rem; cursor: default; touch-action: auto; }
+
+/* ---------- Detalle ---------- */
+.volver { display: inline-flex; align-items: center; gap: .4rem; min-height: 48px; font-weight: 700; margin-bottom: .4rem; }
+.titulo-rest { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1rem; margin: 1rem 0; }
+.meta { display: flex; flex-wrap: wrap; gap: .3rem .9rem; color: var(--texto-suave); font-weight: 600; font-size: .95rem; }
+.meta span { display: inline-flex; align-items: center; gap: .3rem; }
+.acc { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem 1.2rem; }
+@media (min-width: 700px) { .acc { grid-template-columns: 1fr 1fr; } }
+.acc li { display: grid; grid-template-columns: 1.8rem 1fr; column-gap: .55rem; row-gap: .25rem; align-items: center; padding: .4rem 0; }
+.acc li > .etiqueta { grid-column: 2; justify-self: start; }
+.acc .marca { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; }
+.acc .si .marca { background: var(--ok-fondo); color: var(--ok); }
+.acc .no { color: var(--texto-suave); }
+.acc .no .marca { background: var(--superficie-2); }
+.acc .no > span:nth-child(2) { text-decoration: line-through; text-decoration-color: var(--borde-fuerte); }
+.acc .necesita > span:nth-child(2) { font-weight: 800; color: var(--texto); }
+.beneficio { display: flex; gap: .6rem; align-items: flex-start; background: #fff6e8; border: 1.5px solid #f3c27b; border-radius: var(--radio-s); padding: .8rem; color: #2b1a00; }
+.beneficio .ico { color: #b45309; width: 1.5rem; height: 1.5rem; }
+.beneficio p { margin: .15rem 0 0; }
+.datos { margin: 1rem 0; display: grid; gap: .7rem; }
+.datos dt { color: var(--texto-suave); font-size: .85rem; font-weight: 700; display: flex; gap: .35rem; align-items: center; }
+.datos dd { margin: 0; font-weight: 600; }
+
+/* ---------- Formulario de reserva ---------- */
+.paso { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--primario); color: #fff; font-size: 1rem; flex: none; }
+.dias { display: flex; gap: .5rem; overflow-x: auto; padding: .2rem .1rem .6rem; -webkit-overflow-scrolling: touch; }
+.dia { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 4.6rem; min-height: 4.8rem; border: 2px solid var(--borde-fuerte); border-radius: 14px; background: var(--superficie); cursor: pointer; font-weight: 700; line-height: 1.15; }
+.dia small { font-size: .72rem; text-transform: uppercase; color: var(--texto-suave); font-weight: 800; }
+.dia strong { font-size: 1.45rem; }
+.dia[aria-pressed="true"] { background: var(--primario); border-color: var(--primario); color: #fff; }
+.dia[aria-pressed="true"] small { color: #fff; }
+.horas { display: grid; grid-template-columns: repeat(auto-fill, minmax(5.4rem, 1fr)); gap: .5rem; }
+.hora { min-height: 50px; border: 2px solid var(--borde-fuerte); border-radius: 12px; background: var(--superficie); font-weight: 800; cursor: pointer; }
+.hora[aria-pressed="true"] { background: var(--primario); border-color: var(--primario); color: #fff; }
+.hora[aria-pressed="true"]::before { content: "✓ "; }
+.personas { display: flex; align-items: center; gap: 1rem; }
+.personas output { min-width: 4.5rem; text-align: center; font-size: 1.6rem; font-weight: 800; }
+.redondo { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--primario); background: var(--primario-claro); color: var(--primario); font-size: 1.6rem; font-weight: 800; cursor: pointer; }
+.redondo[disabled] { opacity: .4; }
+.resumen-linea { background: var(--superficie-2); border-radius: var(--radio-s); padding: .8rem .9rem; font-weight: 700; margin: .8rem 0; }
+.mini-rest { display: flex; align-items: center; gap: .7rem; margin-bottom: .6rem; }
+.inicial { display: grid; place-items: center; width: 2.8rem; height: 2.8rem; flex: none; border-radius: 12px; background: var(--marca); color: var(--acento); font-size: 1.4rem; font-weight: 800; }
+
+/* ---------- Mis visitas ---------- */
+.pestanas { display: flex; gap: .3rem; border-bottom: 2px solid var(--borde); margin-bottom: 1rem; }
+.pestanas button { display: flex; align-items: center; gap: .45rem; min-height: 50px; padding: .4rem 1rem; border: 0; background: none; font-weight: 800; color: var(--texto-suave); border-bottom: 4px solid transparent; margin-bottom: -2px; cursor: pointer; }
+.pestanas button[aria-selected="true"] { color: var(--activo); border-bottom-color: var(--activo); }
+.reservas { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
+.tarjeta-reserva { display: grid; grid-template-columns: auto 1fr; gap: .9rem; background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 1rem; box-shadow: var(--sombra); }
+.tarjeta-reserva h2 { font-size: 1.15rem; margin-bottom: .2rem; }
+.fecha-bloque { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 4.4rem; padding: .5rem .2rem; border-radius: 14px; color: #fff; line-height: 1.1; background: linear-gradient(160deg, var(--marca), color-mix(in srgb, var(--marca) 60%, #000)); align-self: start; }
+.fecha-bloque small { font-size: .66rem; text-transform: uppercase; font-weight: 800; }
+.fecha-bloque strong { font-size: 1.7rem; }
+.tarjeta-reserva__acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+@media (min-width: 800px) { .tarjeta-reserva { grid-template-columns: auto 1fr auto; } .tarjeta-reserva__acciones { grid-column: auto; flex-direction: column; align-items: stretch; min-width: 12rem; } }
+.msg-rest { margin: .5rem 0 .2rem; padding: .6rem .85rem; border-left: 4px solid var(--primario); background: var(--superficie-2); border-radius: 0 10px 10px 0; }
+.esperando { display: flex; align-items: center; gap: .5rem; }
+.punto { width: .7rem; height: .7rem; border-radius: 50%; background: var(--aviso); flex: none; animation: latido 1.4s infinite; }
+@keyframes latido { 0%, 100% { opacity: .35; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.1); } }
+
+/* ---------- Perfil ---------- */
+.foto { width: 9rem; height: 9rem; margin: 0 auto 1rem; border-radius: 50%; overflow: hidden; border: 4px solid var(--primario-claro); box-shadow: 0 0 0 2px var(--primario); background: var(--superficie-2); display: grid; place-items: center; color: var(--texto-suave); }
+.foto img { width: 100%; height: 100%; object-fit: cover; }
+.foto .ico { width: 4.5rem; height: 4.5rem; }
+.archivo { position: relative; overflow: hidden; }
+.archivo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.archivo:focus-within { outline: 3px solid var(--foco); outline-offset: 3px; }
+.muestra-tema { display: inline-block; width: 1.3rem; height: 1.3rem; border-radius: 50%; vertical-align: -.25rem; margin-right: .4rem; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--borde-fuerte); }
+.guardar { position: sticky; bottom: calc(5.6rem + env(safe-area-inset-bottom)); z-index: 5; display: flex; justify-content: flex-end; padding: .7rem; margin-top: 1rem; background: color-mix(in srgb, var(--superficie) 92%, transparent); border: 1px solid var(--borde); border-radius: var(--radio); box-shadow: var(--sombra-alta); backdrop-filter: blur(6px); }
+.atenuado { opacity: .55; }
+
+/* ---------- Avisos ---------- */
+.avisos { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; max-width: 50rem; }
+.aviso { display: grid; grid-template-columns: auto 1fr; gap: .8rem; background: var(--superficie); border: 1px solid var(--borde); border-left: 6px solid var(--borde-fuerte); border-radius: var(--radio); padding: .9rem 1rem; box-shadow: var(--sombra); }
+.aviso h2 { font-size: 1.02rem; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .2rem; }
+.aviso p { margin: 0 0 .2rem; }
+.aviso__ico { display: grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; background: var(--superficie-2); }
+.aviso--confirmada { border-left-color: var(--ok); } .aviso--confirmada .aviso__ico { background: var(--ok-fondo); color: var(--ok); }
+.aviso--rechazada { border-left-color: var(--error); } .aviso--rechazada .aviso__ico { background: var(--error-fondo); color: var(--error); }
+.aviso--recordatorio, .aviso--prueba { border-left-color: var(--info); }
+.aviso--recordatorio .aviso__ico, .aviso--prueba .aviso__ico { background: var(--info-fondo); color: var(--info); }
+
+/* ---------- Barra inferior ---------- */
+.barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: color-mix(in srgb, var(--superficie) 96%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--borde); box-shadow: 0 -6px 24px rgb(16 24 40 / .08); padding: .35rem .4rem calc(.35rem + env(safe-area-inset-bottom)); }
+html.tema-vibrante .barra::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: linear-gradient(90deg, #8e2de2, #f0306f, #ffb000); }
+.barra ul { list-style: none; margin: 0 auto; padding: 0; max-width: 46rem; display: grid; grid-template-columns: repeat(5, 1fr); gap: .15rem; }
+.barra a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .1rem; min-height: 60px; padding: .3rem .15rem; border-radius: 14px; text-align: center; color: #2e2a4f; text-decoration: none; font-weight: 700; font-size: .7rem; line-height: 1.1; }
+@media (min-width: 600px) { .barra a { font-size: .8rem; } }
+.barra a[aria-current="page"] { background: var(--activo-fondo); color: var(--activo); }
+.barra .ico { width: 1.6rem; height: 1.6rem; }
+html.tema-vibrante .barra a:not([aria-current]) .ico { color: #6d28d9; }
+html.tema-vibrante .barra li:nth-child(4) a:not([aria-current]) .ico { color: #e0115f; }
+.barra .contador { position: absolute; top: 2px; left: calc(50% + .45rem); background: var(--activo); color: #fff; min-width: 1.2rem; height: 1.2rem; font-size: .66rem; }
+.avatar-mini { width: 1.6rem; height: 1.6rem; border-radius: 50%; object-fit: cover; border: 2px solid currentColor; }
+
+/* ---------- Avisos emergentes y diálogo ---------- */
+.toasts { position: fixed; left: .75rem; right: .75rem; bottom: calc(5.8rem + env(safe-area-inset-bottom)); z-index: 60; display: flex; flex-direction: column; gap: .5rem; align-items: flex-end; pointer-events: none; }
+.toast { pointer-events: auto; width: min(100%, 26rem); display: grid; grid-template-columns: auto 1fr auto; gap: .7rem; align-items: start; background: var(--superficie); color: var(--texto); border-radius: var(--radio); padding: .8rem .9rem; box-shadow: var(--sombra-alta); border: 1px solid var(--borde); border-left: 6px solid var(--info); animation: entrar .3s ease; }
+.toast--confirmada { border-left-color: var(--ok); } .toast--rechazada { border-left-color: var(--error); }
+.toast strong { display: block; font-size: .95rem; } .toast p { margin: 0; font-size: .86rem; line-height: 1.35; }
+@media (max-width: 599px) { .toast { padding: .6rem .7rem; gap: .5rem; } .toast > .ico { width: 1.3rem; height: 1.3rem; } }
+.toast > .ico { width: 1.6rem; height: 1.6rem; color: var(--info); }
+.toast--confirmada > .ico { color: var(--ok); } .toast--rechazada > .ico { color: var(--error); }
+.toast button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--superficie-2); cursor: pointer; font-size: 1.2rem; }
+@keyframes entrar { from { transform: translateY(1rem); opacity: 0; } }
+dialog { border: 0; border-radius: 22px; padding: 1.3rem; width: min(calc(100% - 1.5rem), 34rem); max-height: 85vh; color: var(--texto); background: var(--superficie); box-shadow: var(--sombra-alta); }
+dialog::backdrop { background: rgb(10 15 30 / .55); }
+dialog h2 { display: flex; align-items: center; gap: .5rem; }
+.dialogo__cerrar { position: absolute; top: .7rem; right: .7rem; width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--superficie-2); cursor: pointer; font-size: 1.3rem; }
+</style>
+</head>
+<body data-vista="inicio">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <radialGradient id="il-mesa" cx="32%" cy="22%" r="90%"><stop offset="0" stop-color="#6e4529"/><stop offset=".55" stop-color="#3a2416"/><stop offset="1" stop-color="#140b06"/></radialGradient>
+    <linearGradient id="il-plato" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d9d1c2"/></linearGradient>
+    <linearGradient id="il-pan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3b95f"/><stop offset="1" stop-color="#b8661c"/></linearGradient>
+    <radialGradient id="il-carne" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="#93502a"/><stop offset="1" stop-color="#3a1a0a"/></radialGradient>
+    <linearGradient id="il-corte" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e48a86"/><stop offset="1" stop-color="#b9444a"/></linearGradient>
+    <linearGradient id="il-madera" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c99863"/><stop offset="1" stop-color="#8a5a2f"/></linearGradient>
+    <filter id="il-desenfoque"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="il-sombra" x="-30%" y="-30%" width="160%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="6" flood-color="#000" flood-opacity=".5"/></filter>
+  </defs>
+</svg>
+
+<a class="saltar" href="#contenido" data-saltar>Saltar al contenido</a>
+
+<header class="cabecera">
+  <div class="cabecera__fila">
+    <a class="logo" href="#inicio" aria-label="accessfood, ir al inicio">
+      <svg viewBox="0 0 48 56" aria-hidden="true"><path class="logo-pin" d="M24 54C12 41 3 32 3 22a21 21 0 0 1 42 0c0 10-9 19-21 32z"/><path class="logo-cub" d="M17 11v9a3 3 0 0 0 3 3v14M20 11v7M23 11v9a3 3 0 0 1-3 3M31 37V11c-3 1.5-5 4.5-5 9v6h5" fill="none" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="logo__texto">accessfood<sup>®</sup></span>
+    </a>
+    <dl class="stats" id="stats"></dl>
+    <a class="campana" href="#avisos" id="campana" aria-label="Avisos"></a>
+  </div>
+  <svg class="onda" viewBox="0 0 1440 60" preserveAspectRatio="none" aria-hidden="true"><path class="l" d="M0 34 C 360 4, 720 64, 1080 30 S 1440 18, 1440 18 V60 H0Z"/><path class="f" d="M0 44 C 360 14, 720 74, 1080 40 S 1440 28, 1440 28 V60 H0Z"/></svg>
+</header>
+
+<main id="contenido" tabindex="-1"></main>
+<p class="pie">Prototipo académico de accessfood · Sin convenios actuales con los restaurantes · Mapa © colaboradores de OpenStreetMap.</p>
+
+<nav class="barra" aria-label="Secciones principales"><ul id="barra"></ul></nav>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<dialog id="dialogo" aria-labelledby="dialogo-titulo"></dialog>
+
+<script>
+"use strict";
+/* =====================================================================
+   DATOS
+   ===================================================================== */
+const AVISO_PROTOTIPO = "No existe ningún convenio actual con estos restaurantes: los beneficios, calificaciones, horarios, cupos y características de accesibilidad son datos de ejemplo, y las reservas no se envían a los establecimientos. Los nombres y marcas pertenecen a sus dueños.";
+
+const CARACTERISTICAS = {
+  ACCESO_SIN_ESCALONES: "Acceso sin escalones o con rampa", BANO_ADAPTADO: "Baño adaptado",
+  ESPACIOS_AMPLIOS: "Pasillos y mesas amplias", ESTACIONAMIENTO_PREFERENTE: "Estacionamiento preferente",
+  MESA_CERCA_ENTRADA: "Mesa cerca de la entrada", SILLAS_COMODAS: "Sillas cómodas con respaldo y brazos",
+  SILLAS_BEBE: "Sillas para bebé", CAMBIADOR: "Cambiador para bebé", ESPACIO_CARRIOLA: "Espacio para carriola",
+  MENU_LETRA_GRANDE: "Menú en letra grande o braille", PERROS_ASISTENCIA: "Se admiten perros de asistencia",
+  ZONA_TRANQUILA: "Zona tranquila y bien iluminada",
+};
+const GRUPOS = {
+  MOVILIDAD: ["Movilidad reducida o silla de ruedas", ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "ESPACIOS_AMPLIOS", "ESTACIONAMIENTO_PREFERENTE"]],
+  VISUAL: ["Discapacidad visual", ["MENU_LETRA_GRANDE", "PERROS_ASISTENCIA", "ZONA_TRANQUILA"]],
+  AUDITIVA: ["Discapacidad auditiva", ["ZONA_TRANQUILA"]],
+  EMBARAZO: ["Embarazo", ["SILLAS_COMODAS", "MESA_CERCA_ENTRADA", "BANO_ADAPTADO"]],
+  NINOS: ["Con niños pequeños", ["SILLAS_BEBE", "CAMBIADOR", "ESPACIO_CARRIOLA"]],
+  ADULTO_MAYOR: ["Adulto mayor", ["SILLAS_COMODAS", "MESA_CERCA_ENTRADA", "MENU_LETRA_GRANDE", "ZONA_TRANQUILA"]],
+};
+const ANTICIPACIONES = { UN_DIA: [1440, "1 día antes", "mañana"], DOS_HORAS: [120, "2 horas antes", "en 2 horas"], UNA_HORA: [60, "1 hora antes", "en 1 hora"] };
+const CATEGORIAS = {
+  POBLANA: ["Cocina poblana", ["Cocina poblana"]], CAFETERIAS: ["Cafeterías", ["Cafetería y restaurante", "Café y librería"]],
+  CORTES: ["Cortes", ["Cortes argentinos"]], MARISCOS: ["Mariscos", ["Mariscos"]],
+  INTERNACIONAL: ["Internacional", ["Italiana", "Japonesa"]], VEGETARIANA: ["Vegetariana", ["Vegetariana"]],
+};
+const ZONAS = {
+  ZOCALO: ["el Zócalo", 19.0433, -98.1981], PASEO_BRAVO: ["Paseo Bravo", 19.0470, -98.2045],
+  JUAREZ: ["Av. Juárez", 19.0510, -98.2150], ANGELOPOLIS: ["Angelópolis", 19.0290, -98.2320],
+  ATLIXCAYOTL: ["Vía Atlixcáyotl", 19.0200, -98.2450],
+};
+const MAX_PERSONAS = 12, DIAS_RESERVA = 14, RESPUESTA_SEG = 8, DIA_CORTE = 15;
+const SIN_TEL = "Consultar con el restaurante";
+
+// Restaurantes reales de Puebla (nombre y dirección consultados en nov. 2026). Todo lo demás es de ejemplo.
+const RESTAURANTES = [
+  { id: 1, nombre: "El Mural de los Poblanos", cocina: "Cocina poblana", direccion: "Calle 16 de Septiembre 506, Centro Histórico", telefono: "222 242 0503", descripcion: "Cocina poblana tradicional en el patio de una casona del Centro Histórico, con los murales de Antonio Álvarez Morán.", precio: 3, calificacion: 4.7, beneficio: "10 % de descuento en alimentos", caract: ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "SILLAS_COMODAS", "MESA_CERCA_ENTRADA", "MENU_LETRA_GRANDE"], cupo: 30, abre: "08:00", cierra: "23:00", color: "#7c2d12", acento: "#fde68a", estilo: "script", ilus: "mole", lat: 19.0405, lng: -98.1990 },
+  { id: 2, nombre: "Fonda de Santa Clara", cocina: "Cocina poblana", direccion: "Av. 3 Poniente 307, Centro Histórico", telefono: "222 232 7674", descripcion: "Fonda fundada en 1965, conocida por su mole poblano, las chalupas y la cocina tradicional de Puebla.", precio: 2, calificacion: 4.4, beneficio: "Postre de cortesía para adultos mayores", caract: ["ACCESO_SIN_ESCALONES", "SILLAS_COMODAS", "MESA_CERCA_ENTRADA", "SILLAS_BEBE", "ZONA_TRANQUILA"], cupo: 26, abre: "09:00", cierra: "19:00", color: "#f6ead8", acento: "#9a3412", estilo: "serif", ilus: "tacos", lat: 19.0425, lng: -98.2010 },
+  { id: 3, nombre: "Fisher's", cocina: "Mariscos", direccion: "Calle 19 Sur 702, esq. Av. Juárez", telefono: SIN_TEL, descripcion: "Restaurante de pescados y mariscos en la zona de la Av. Juárez.", precio: 3, calificacion: 4.4, beneficio: "Bebida sin costo de lunes a jueves", caract: ["ACCESO_SIN_ESCALONES", "ESPACIOS_AMPLIOS", "ESTACIONAMIENTO_PREFERENTE", "SILLAS_BEBE", "BANO_ADAPTADO"], cupo: 35, abre: "12:00", cierra: "22:00", color: "#0b4f8a", acento: "#ffffff", estilo: "bloque", ilus: "mariscos", lat: 19.0505, lng: -98.2110 },
+  { id: 4, nombre: "Italianni's", cocina: "Italiana", direccion: "Blvd. del Niño Poblano 2510, Angelópolis Lifestyle Center", telefono: "222 225 0148", descripcion: "Cocina italiana en formato familiar dentro del centro comercial Angelópolis.", precio: 3, calificacion: 4.3, beneficio: "Pan de ajo de cortesía", caract: ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "ESPACIOS_AMPLIOS", "ESTACIONAMIENTO_PREFERENTE", "SILLAS_BEBE", "CAMBIADOR", "ESPACIO_CARRIOLA"], cupo: 40, abre: "13:00", cierra: "23:00", color: "#f4ecdf", acento: "#14532d", estilo: "serif", ilus: "pasta", lat: 19.0285, lng: -98.2330 },
+  { id: 5, nombre: "Vips", cocina: "Cafetería y restaurante", direccion: "Av. 2 Oriente 201, Centro Histórico", telefono: "222 232 8205", descripcion: "Cafetería-restaurante de cadena con desayunos, comidas y cenas a una calle del Zócalo.", precio: 2, calificacion: 4.2, beneficio: "Café americano gratis en desayunos", caract: ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "SILLAS_BEBE", "MESA_CERCA_ENTRADA", "SILLAS_COMODAS", "CAMBIADOR"], cupo: 45, abre: "07:00", cierra: "23:00", color: "#c8102e", acento: "#ffffff", estilo: "redonda", ilus: "hotcakes", lat: 19.0452, lng: -98.1965 },
+  { id: 6, nombre: "Profética", cocina: "Café y librería", direccion: "Calle 3 Sur 701, Centro Histórico", telefono: "222 246 9101", descripcion: "Casa de la Lectura: librería, biblioteca y cafetería en una casona del siglo XVI. Cupo reducido por horario.", precio: 2, calificacion: 4.6, beneficio: "Rebanada de pastel con tu café", caract: ["ZONA_TRANQUILA", "SILLAS_COMODAS", "PERROS_ASISTENCIA"], cupo: 6, abre: "08:00", cierra: "23:00", color: "#1f2937", acento: "#fcd34d", estilo: "condensada", ilus: "pastel", lat: 19.0402, lng: -98.2005 },
+  { id: 7, nombre: "La Estancia Argentina", cocina: "Cortes argentinos", direccion: "Vía Atlixcáyotl 5312, Angelópolis", telefono: SIN_TEL, descripcion: "Cortes de carne con maduración en seco (dry aged), en la zona de Angelópolis.", precio: 3, calificacion: 4.6, beneficio: "Guarnición extra sin costo", caract: ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "ESPACIOS_AMPLIOS", "ESTACIONAMIENTO_PREFERENTE", "SILLAS_COMODAS", "SILLAS_BEBE"], cupo: 40, abre: "13:00", cierra: "23:00", color: "#111111", acento: "#7dd3fc", estilo: "bloque", ilus: "carne", lat: 19.0215, lng: -98.2420 },
+  { id: 8, nombre: "La Zanahoria", cocina: "Vegetariana", direccion: "Av. 5 Oriente 206, Centro Histórico", telefono: "222 246 5462", descripcion: "Restaurante vegetariano con opciones veganas y buffet, a unos pasos del Zócalo.", precio: 1, calificacion: 4.0, beneficio: "Agua fresca gratis para embarazadas", caract: ["ACCESO_SIN_ESCALONES", "ESPACIOS_AMPLIOS", "ZONA_TRANQUILA", "ESPACIO_CARRIOLA", "MESA_CERCA_ENTRADA"], cupo: 30, abre: "09:00", cierra: "20:00", color: "#ea580c", acento: "#ffffff", estilo: "redonda", ilus: "ensalada", lat: 19.0420, lng: -98.1960 },
+  { id: 9, nombre: "Hotaru", cocina: "Japonesa", direccion: "Vía Atlixcáyotl 4931, Reserva Territorial Atlixcáyotl", telefono: SIN_TEL, descripcion: "Sushi y cocina japonesa contemporánea en la zona de Angelópolis.", precio: 3, calificacion: 4.5, beneficio: "Entrada de cortesía al reservar desde la app", caract: ["ACCESO_SIN_ESCALONES", "ZONA_TRANQUILA", "ESTACIONAMIENTO_PREFERENTE"], cupo: 20, abre: "13:00", cierra: "22:00", color: "#0f172a", acento: "#f472b6", estilo: "condensada", ilus: "sushi", lat: 19.0240, lng: -98.2380 },
+  { id: 10, nombre: "Sanborns", cocina: "Cafetería y restaurante", direccion: "Av. 2 Oriente 6, Centro Histórico", telefono: SIN_TEL, descripcion: "Tienda y restaurante de cadena junto al Zócalo, con cocina mexicana e internacional.", precio: 2, calificacion: 4.3, beneficio: "15 % de descuento para adultos mayores", caract: ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "SILLAS_COMODAS", "MENU_LETRA_GRANDE", "ZONA_TRANQUILA", "CAMBIADOR"], cupo: 40, abre: "07:00", cierra: "22:00", color: "#f5e9dc", acento: "#7f1d1d", estilo: "script", ilus: "enchiladas", lat: 19.0450, lng: -98.1978 },
+  { id: 11, nombre: "La Casa del Mendrugo", cocina: "Cocina poblana", direccion: "Calle 4 Sur 304, Centro Histórico", telefono: "222 326 8060", descripcion: "Restaurante, museo, galería y club de jazz en una casa histórica a una cuadra del Zócalo.", precio: 3, calificacion: 4.4, beneficio: "Visita al museo incluida", caract: ["ACCESO_SIN_ESCALONES", "ESPACIOS_AMPLIOS", "SILLAS_COMODAS", "MENU_LETRA_GRANDE", "PERROS_ASISTENCIA"], cupo: 28, abre: "08:00", cierra: "23:00", color: "#3b0764", acento: "#f59e0b", estilo: "serif", ilus: "sopa", lat: 19.04185, lng: -98.19620 },
+  { id: 12, nombre: "Casareyna", cocina: "Cocina poblana", direccion: "Privada 2 Oriente 1007, Centro Histórico", telefono: "222 232 0032", descripcion: "Restaurante del hotel boutique Casareyna: cocina poblana servida en vajilla de Talavera.", precio: 3, calificacion: 4.6, beneficio: "Degustación de moles para compartir", caract: ["ACCESO_SIN_ESCALONES", "BANO_ADAPTADO", "ESPACIOS_AMPLIOS", "SILLAS_COMODAS", "ZONA_TRANQUILA", "ESTACIONAMIENTO_PREFERENTE", "CAMBIADOR", "ESPACIO_CARRIOLA"], cupo: 32, abre: "08:00", cierra: "22:30", color: "#1e3a8a", acento: "#fde68a", estilo: "script", ilus: "enchiladas", lat: 19.0455, lng: -98.1905 },
+];
+const REST = new Map(RESTAURANTES.map((r) => [r.id, r]));
+RESTAURANTES.forEach((r) => {
+  r.categoria = Object.keys(CATEGORIAS).find((k) => CATEGORIAS[k][1].includes(r.cocina)) || "";
+  const [R, G, B] = [1, 3, 5].map((i) => parseInt(r.color.slice(i, i + 2), 16));
+  r.oscuro = (0.299 * R + 0.587 * G + 0.114 * B) > 160 ? r.acento : r.color;   // color legible con texto blanco
+});
+
+/* =====================================================================
+   ESTADO (se guarda en este navegador)
+   ===================================================================== */
+const CLAVE = "accessfood-v1";
+const perfilVacio = () => ({ nombre: "", telefono: "", correo: "", foto: null, grupos: [], necesidades: [], recordatorios: true, anticipaciones: ["UN_DIA", "DOS_HORAS"], tema: "VIBRANTE", texto: "NORMAL", contraste: false });
+const estadoVacio = () => ({ perfil: perfilVacio(), reservas: [], favoritos: [], avisos: [], enviados: {}, siguiente: 1, zona: "ZOCALO", yo: null });
+let estado = estadoVacio();
+let almacenamiento = true;
+try { const g = JSON.parse(localStorage.getItem(CLAVE) || "null"); if (g) estado = Object.assign(estadoVacio(), g, { perfil: Object.assign(perfilVacio(), g.perfil) }); }
+catch (_) { almacenamiento = false; }
+function guardar() {
+  try { localStorage.setItem(CLAVE, JSON.stringify(estado)); }
+  catch (_) {
+    almacenamiento = false;
+    if (estado.perfil.foto) { try { const sinFoto = { ...estado, perfil: { ...estado.perfil, foto: null } }; localStorage.setItem(CLAVE, JSON.stringify(sinFoto)); } catch (__) {} }
+  }
+}
+
+/* =====================================================================
+   UTILIDADES
+   ===================================================================== */
+const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+const pad = (n) => String(n).padStart(2, "0");
+const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ahora = () => new Date();
+const isoFecha = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const isoFechaHora = (d) => `${isoFecha(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function leer(iso) { const [f, h = "00:00"] = iso.split("T"); const [a, m, d] = f.split("-").map(Number); const [hh, mm] = h.split(":").map(Number); return new Date(a, m - 1, d, hh, mm); }
+const horaTxt = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fechaLarga = (d) => `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+const fechaHoraLarga = (d) => `${fechaLarga(d)} a las ${horaTxt(d)}`;
+const mayus = (t) => t.charAt(0).toUpperCase() + t.slice(1);
+const aMin = (h) => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
+const deMin = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+const personasTxt = (n) => `${n} ${n === 1 ? "persona" : "personas"}`;
+const etiquetas = (claves) => claves.map((c) => CARACTERISTICAS[c]).join(", ").toLowerCase();
+function distanciaKm(a, b) {
+  const rad = (g) => (g * Math.PI) / 180, dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+const distTxt = (km) => (km < 1 ? `a ${Math.round(km * 100) * 10} m` : `a ${km.toFixed(1).replace(".", ",")} km`);
+function ubicacion() {
+  if (estado.yo) return { lat: estado.yo.lat, lng: estado.yo.lng, nombre: estado.yo.gps ? "tu ubicación" : "el punto que marcaste" };
+  const z = ZONAS[estado.zona] || ZONAS.ZOCALO; return { lat: z[1], lng: z[2], nombre: z[0] };
+}
+
+/* =====================================================================
+   ÍCONOS E ILUSTRACIONES (SVG propios)
+   ===================================================================== */
+const ICONOS = {
+  casa: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9"/>',
+  buscar: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  visitas: '<path d="M7 3v8a2 2 0 0 0 2 2v8"/><path d="M11 3v6"/><path d="M9 3v6"/><path d="M18 21V3c-2.2 1-4 3.4-4 7v4h4"/>',
+  corazon: '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
+  usuario: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
+  campana: '<path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  calendario: '<rect x="3" y="4.5" width="18" height="17" rx="2"/><path d="M16 2.5v4M8 2.5v4M3 10h18"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>', equis: '<path d="M18 6 6 18M6 6l12 12"/>',
+  reloj: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  personas: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.3c2 .8 3.5 2.8 3.5 5.7"/>',
+  ubicacion: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  telefono: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>',
+  estrella: '<path d="m12 2.5 2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" fill="currentColor"/>',
+  regalo: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v9H5v-9"/><path d="M7.5 8a2.5 2.5 0 1 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 1 1 0 5"/>',
+  accesible: '<circle cx="12" cy="4" r="2"/><path d="M19 13v-2a6.5 6.5 0 0 1-5-2.3L12.5 7a2 2 0 0 0-1.6-.9H9.3"/><path d="M7 21a5 5 0 0 1 0-10"/><path d="M11.5 11.5 12 16h5l2 5"/>',
+  editar: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  basura: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+  volver: '<path d="M19 12H5M12 19l-7-7 7-7"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+  alerta: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  camara: '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+  repetir: '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  filtros: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  mapa: '<path d="M9 4 3 6.5v13.5L9 17.5l6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>',
+  lista: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  mira: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/>',
+};
+const ico = (n, extra = "") => `<svg class="ico ${extra}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONOS[n] || ""}</svg>`;
+
+const plato = (cx = 120, cy = 112, rx = 98, ry = 34) => `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="url(#il-plato)" filter="url(#il-sombra)"/><ellipse cx="${cx}" cy="${cy - 2}" rx="${rx * .76}" ry="${ry * .7}" fill="#fbf8f1" stroke="#e4dccd" stroke-width="1.5"/>`;
+const taza = (x = 205, y = 70) => `<g filter="url(#il-sombra)"><ellipse cx="${x}" cy="${y + 44}" rx="38" ry="10" fill="url(#il-plato)"/><path d="M${x - 26} ${y + 6} h52 l-5 30 a12 12 0 0 1 -12 10 h-18 a12 12 0 0 1 -12 -10 z" fill="#fbfaf6"/><path d="M${x + 25} ${y + 12} a10 10 0 1 1 -2 18" fill="none" stroke="#f1ede4" stroke-width="5"/></g><ellipse cx="${x}" cy="${y + 7}" rx="25" ry="5" fill="#5b3216"/>`;
+const DIBUJOS = {
+  enchiladas: () => plato() + `<g filter="url(#il-sombra)"><rect x="62" y="82" width="118" height="22" rx="11" fill="#e6be74" transform="rotate(-7 120 93)"/><rect x="58" y="98" width="126" height="23" rx="11.5" fill="#efcb86" transform="rotate(-3 120 109)"/><rect x="66" y="113" width="112" height="21" rx="10.5" fill="#e0b464" transform="rotate(2 120 123)"/></g><path d="M60 95 C80 78 110 91 131 85 S176 82 183 97 C188 112 171 128 150 130 S90 134 69 126 C55 120 51 105 60 95Z" fill="#b3261e" opacity=".93"/><path d="M70 99 q8 -6 16 0 t16 0 t16 0 t16 0 t16 0 t16 0" stroke="#fff4e0" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M76 116 q8 -5 16 0 t16 0 t16 0 t16 0 t16 0" stroke="#fff4e0" stroke-width="3" fill="none" stroke-linecap="round"/><g fill="none" stroke="#f5e9ff" stroke-width="2"><circle cx="96" cy="104" r="5"/><circle cx="140" cy="96" r="4.5"/><circle cx="158" cy="114" r="5"/></g><g fill="#3f9b3f"><ellipse cx="110" cy="92" rx="3" ry="2"/><ellipse cx="126" cy="108" rx="3" ry="2"/><ellipse cx="84" cy="112" rx="3" ry="2"/><ellipse cx="166" cy="100" rx="3" ry="2"/></g>`,
+  sopa: () => `<ellipse cx="120" cy="140" rx="86" ry="14" fill="#000" opacity=".45" filter="url(#il-desenfoque)"/><path d="M42 90 Q46 148 120 150 Q194 148 198 90 Z" fill="#b4532a"/><path d="M50 110 Q120 130 190 110" stroke="#f6e3c0" stroke-width="4" fill="none"/><path d="M56 124 Q120 142 184 124" stroke="#f6e3c0" stroke-width="2" fill="none" stroke-dasharray="6 6"/><ellipse cx="120" cy="90" rx="78" ry="21" fill="#8f3a18"/><ellipse cx="120" cy="91" rx="71" ry="16" fill="#c2410c"/><ellipse cx="104" cy="88" rx="30" ry="6" fill="#ea7a2b" opacity=".7"/><g fill="#fff6e3"><circle cx="90" cy="92" r="5"/><circle cx="100" cy="97" r="4.5"/><circle cx="132" cy="96" r="5"/><circle cx="148" cy="89" r="4.5"/><circle cx="116" cy="99" r="4"/></g><g fill="#7cc04a"><path d="M128 82 q10 -8 22 -2 q-10 8 -22 2z"/><path d="M76 86 q8 -7 18 -3 q-8 7 -18 3z"/></g><g fill="#fff" stroke="#e11d48" stroke-width="2.5"><circle cx="160" cy="96" r="6"/><circle cx="82" cy="98" r="5"/></g><path d="M168 82 a10 10 0 0 1 20 0z" fill="#65a30d"/><g stroke="#fff" stroke-width="3" fill="none" opacity=".35" stroke-linecap="round"><path d="M100 66 q-8 -12 0 -24 q8 -12 0 -24"/><path d="M124 64 q-8 -12 0 -24 q8 -12 0 -24"/><path d="M146 66 q-8 -12 0 -24"/></g>`,
+  mariscos: () => plato() + [[76, 96, -20], [104, 88, 10], [134, 92, -5], [160, 102, 25], [98, 116, 0], [132, 118, 15]].map(([x, y, r]) => `<g transform="translate(${x} ${y}) rotate(${r})"><path d="M-12 4 a13 13 0 1 1 22 8" fill="none" stroke="#f97316" stroke-width="10" stroke-linecap="round"/><path d="M-12 4 a13 13 0 1 1 22 8" fill="none" stroke="#ffc59a" stroke-width="10" stroke-dasharray="2 5" stroke-linecap="round"/><path d="M9 12 l8 6 l-1 -9z" fill="#e2551a"/></g>`).join("") + `<g filter="url(#il-sombra)"><path d="M168 120 a17 17 0 0 1 34 0z" fill="#facc15"/><path d="M172 120 a13 13 0 0 1 26 0z" fill="#fef08a"/></g><g fill="#3f9b3f"><circle cx="118" cy="104" r="3"/><circle cx="88" cy="106" r="2.5"/><circle cx="150" cy="110" r="3"/></g>`,
+  pasta: () => plato() + `<g fill="none" stroke="#f1c75b" stroke-width="3.2" stroke-linecap="round" filter="url(#il-sombra)">` + [[52, 18, 0], [48, 20, 20], [50, 16, -18], [44, 18, 40], [46, 15, -38], [40, 16, 70], [36, 13, -60], [30, 12, 10], [24, 10, -25]].map(([a, b, g]) => `<ellipse cx="120" cy="100" rx="${a}" ry="${b}" transform="rotate(${g} 120 100)"/>`).join("") + `</g><path d="M96 92 C100 76 140 74 146 90 C152 104 132 110 118 108 C104 107 93 102 96 92Z" fill="#c0392b"/><g fill="#8e2219"><circle cx="110" cy="92" r="4"/><circle cx="130" cy="88" r="3.5"/><circle cx="124" cy="100" r="4"/></g><g fill="#fff8e1"><rect x="106" y="86" width="3" height="2"/><rect x="118" y="93" width="3" height="2"/><rect x="136" y="96" width="3" height="2"/><rect x="114" y="102" width="3" height="2"/></g><path d="M126 80 q10 -16 24 -10 q-6 14 -24 10z" fill="#2f8f3a"/><path d="M124 80 q-14 -12 -6 -24 q12 8 6 24z" fill="#3fae4b"/>`,
+  hotcakes: () => plato(104) + taza(200, 64) + `<g filter="url(#il-sombra)"><rect x="48" y="96" width="112" height="16" rx="8" fill="url(#il-pan)"/><rect x="50" y="84" width="108" height="16" rx="8" fill="url(#il-pan)"/><rect x="52" y="72" width="104" height="16" rx="8" fill="url(#il-pan)"/></g><ellipse cx="104" cy="74" rx="51" ry="9" fill="#eab35c"/><path d="M60 74 q10 10 6 22 q4 -10 10 -18 q4 16 8 4 q8 10 14 -2 q10 8 18 0 q6 12 14 4 q2 14 8 -4" fill="#7c3a10" opacity=".9"/><rect x="94" y="62" width="18" height="10" rx="2" fill="#fff3a6"/><g fill="#fff"><circle cx="86" cy="62" r="9"/><circle cx="96" cy="56" r="8"/><circle cx="90" cy="50" r="6"/></g>` + [[126, 62], [140, 68], [70, 66]].map(([x, y]) => `<path d="M${x} ${y} c-8 -2 -10 8 -4 14 c3 3 6 4 8 2 c6 -6 6 -14 -4 -16z" fill="#e11d48"/><path d="M${x - 3} ${y - 1} l3 -5 l3 5" stroke="#16a34a" stroke-width="2.5" fill="none"/>`).join(""),
+  sushi: () => `<rect x="22" y="92" width="196" height="46" rx="8" fill="url(#il-madera)" filter="url(#il-sombra)"/>` + [54, 98, 142, 186].map((x) => `<g filter="url(#il-sombra)"><circle cx="${x}" cy="96" r="22" fill="#f6f4ec"/><circle cx="${x}" cy="96" r="14" fill="#1d2a1d"/><circle cx="${x}" cy="96" r="11" fill="#fb8c5a"/><path d="M${x} 96 m-11 0 a11 11 0 0 0 11 11 v-11z" fill="#9ccc65"/><path d="M${x - 16} 78 q16 -10 32 0 q-16 6 -32 0z" fill="#f97316"/></g>`).join("") + `<path d="M196 132 q14 -10 22 2 q-10 6 -22 -2z" fill="#f9a8d4"/><path d="M28 132 q6 -10 14 -2 q-4 6 -14 2z" fill="#84cc16"/>`,
+  carne: () => `<rect x="18" y="74" width="208" height="70" rx="12" fill="url(#il-madera)" filter="url(#il-sombra)" transform="rotate(-3 120 109)"/><path d="M34 98 C40 74 92 70 118 80 C142 88 140 122 116 130 C86 140 30 126 34 98Z" fill="url(#il-carne)" filter="url(#il-sombra)"/><g stroke="#1d0d05" stroke-width="5" stroke-linecap="round" opacity=".85"><path d="M50 92 l26 -12"/><path d="M50 110 l46 -24"/><path d="M62 124 l46 -26"/><path d="M86 128 l28 -16"/></g>` + [[140, -6], [166, -2], [192, 4]].map(([x, r]) => `<g transform="rotate(${r} ${x} 104)" filter="url(#il-sombra)"><rect x="${x - 12}" y="80" width="24" height="50" rx="7" fill="#5a2a12"/><rect x="${x - 8}" y="84" width="16" height="42" rx="5" fill="url(#il-corte)"/></g>`).join("") + `<path d="M60 64 L150 54" stroke="#3f6212" stroke-width="2.5"/><g fill="#65a30d">` + Array.from({ length: 9 }, (_, i) => `<ellipse cx="${66 + i * 10}" cy="${62 - i * 1.1}" rx="5" ry="1.8" transform="rotate(${i % 2 ? -35 : 35} ${66 + i * 10} ${62 - i * 1.1})"/>`).join("") + `</g>`,
+  ensalada: () => `<ellipse cx="120" cy="138" rx="84" ry="12" fill="#000" opacity=".45" filter="url(#il-desenfoque)"/><path d="M38 88 Q44 146 120 148 Q196 146 202 88 Z" fill="#a86b3c"/><ellipse cx="120" cy="88" rx="82" ry="20" fill="#7c4a24"/>` + [[70, 80, -30, "#4caf50"], [92, 72, 10, "#7cb342"], [118, 70, -15, "#2e7d32"], [146, 72, 25, "#8bc34a"], [170, 80, -20, "#43a047"], [104, 86, 40, "#689f38"], [136, 86, -40, "#558b2f"], [82, 90, 15, "#9ccc65"], [160, 90, 30, "#7cb342"]].map(([x, y, r, c]) => `<ellipse cx="${x}" cy="${y}" rx="20" ry="10" fill="${c}" transform="rotate(${r} ${x} ${y})"/>`).join("") + [[96, 78], [140, 80], [120, 90], [162, 76]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" fill="#e53935"/><circle cx="${x - 2.5}" cy="${y - 2.5}" r="2.5" fill="#ff8a80"/>`).join("") + [[74, 86], [110, 74], [150, 92]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="7" fill="#dcedc8" stroke="#558b2f" stroke-width="2"/>`).join(""),
+  pastel: () => plato(104) + taza(200, 62) + `<g filter="url(#il-sombra)"><path d="M44 108 L150 120 L152 96 L58 82 Z" fill="#f7e3b5"/><path d="M44 108 L150 120 L150 128 L44 116 Z" fill="#a5682a"/><path d="M58 82 L152 96 L164 84 L80 70 Z" fill="#c1121f"/><path d="M152 96 L164 84 L164 108 L150 120 Z" fill="#ead2a0"/></g><path d="M60 82 q4 10 8 2 q6 12 10 2 q8 10 12 4 q10 10 14 0 q8 8 12 4 q8 12 14 2 q6 8 12 -2" fill="#9b0f19"/><g fill="#fff"><circle cx="112" cy="76" r="9"/><circle cx="120" cy="70" r="7.5"/><circle cx="114" cy="64" r="5.5"/></g>`,
+  tacos: () => plato() + [[78, -8], [120, 0], [162, 8]].map(([x, r]) => `<g transform="rotate(${r} ${x} 104)" filter="url(#il-sombra)"><path d="M${x - 30} 110 a30 30 0 0 1 60 0z" fill="#f1d38b" stroke="#d6ae5a" stroke-width="2"/><path d="M${x - 24} 100 q6 -12 12 -4 q6 -12 12 -2 q6 -12 12 -2 q6 -8 8 6 z" fill="#d9480f"/><g fill="#fff"><rect x="${x - 14}" y="92" width="4" height="4"/><rect x="${x + 4}" y="90" width="4" height="4"/></g><g fill="#22a34a"><circle cx="${x - 8}" cy="92" r="2.4"/><circle cx="${x + 12}" cy="96" r="2.4"/><circle cx="${x + 2}" cy="88" r="2.4"/></g></g>`).join("") + [64, 176].map((x) => `<path d="M${x} 130 a12 12 0 0 1 24 0z" fill="#4d7c0f"/><path d="M${x + 3} 130 a9 9 0 0 1 18 0z" fill="#bef264"/>`).join(""),
+  mole: () => plato() + `<ellipse cx="78" cy="106" rx="32" ry="17" fill="#e07a3f" filter="url(#il-sombra)"/><path d="M104 100 C112 82 172 80 182 98 C190 116 168 130 140 130 C112 130 98 116 104 100Z" fill="#3d1708"/><path d="M118 96 C124 86 158 84 166 98 C172 110 150 118 136 116 C120 114 114 106 118 96Z" fill="#5a2410" filter="url(#il-sombra)"/><g fill="#f5deb3">` + [[126, 98], [134, 92], [146, 96], [152, 104], [138, 108], [128, 106], [158, 98], [142, 100]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="1.8" ry="1"/>`).join("") + `</g><path d="M84 92 q6 -8 14 -4" stroke="#16a34a" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+};
+const ilus = (tipo) => `<svg class="ilus" viewBox="0 0 240 160" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false"><rect width="240" height="160" fill="url(#il-mesa)"/><g filter="url(#il-desenfoque)" opacity=".55"><circle cx="26" cy="20" r="15" fill="#ffb347"/><circle cx="214" cy="16" r="11" fill="#ffd27f"/><circle cx="180" cy="38" r="7" fill="#ff9f43"/></g>${(DIBUJOS[tipo] || DIBUJOS.mole)()}</svg>`;
+
+/* =====================================================================
+   MAPA ESQUEMÁTICO DE PUEBLA (sin internet)
+   ===================================================================== */
+const MAPA = { lngMin: -98.252, lngMax: -98.180, latMin: 19.012, latMax: 19.060, W: 1000 };
+MAPA.H = Math.round(((MAPA.latMax - MAPA.latMin) / ((MAPA.lngMax - MAPA.lngMin) * Math.cos(19.04 * Math.PI / 180))) * MAPA.W);
+const proyectar = (lat, lng) => ({ x: ((lng - MAPA.lngMin) / (MAPA.lngMax - MAPA.lngMin)) * MAPA.W, y: ((MAPA.latMax - lat) / (MAPA.latMax - MAPA.latMin)) * MAPA.H });
+const desproyectar = (x, y) => ({ lng: MAPA.lngMin + (x / MAPA.W) * (MAPA.lngMax - MAPA.lngMin), lat: MAPA.latMax - (y / MAPA.H) * (MAPA.latMax - MAPA.latMin) });
+function dibujoMapa() {
+  const p = (lat, lng) => { const q = proyectar(lat, lng); return `${q.x.toFixed(1)} ${q.y.toFixed(1)}`; };
+  const z = proyectar(19.0433, -98.1981);
+  let cuadricula = "";
+  for (let i = -6; i <= 6; i++) {
+    cuadricula += `<path d="M${z.x - 150} ${z.y + i * 22} H${z.x + 150}"/><path d="M${z.x + i * 22} ${z.y - 150} V${z.y + 150}"/>`;
+  }
+  const calle = (d, ancho = 9) => `<path d="${d}" stroke="#d5ccb6" stroke-width="${ancho + 4}" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="#fff" stroke-width="${ancho}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const texto = (x, y, t, extra = "") => `<text x="${x}" y="${y}" ${extra}>${t}</text>`;
+  const juarez = `M${p(19.0472, -98.2040)} L${p(19.0500, -98.2120)} L${p(19.0520, -98.2200)} L${p(19.0540, -98.2290)}`;
+  const atlixcayotl = `M${p(19.0400, -98.2080)} L${p(19.0340, -98.2200)} L${p(19.0270, -98.2340)} L${p(19.0200, -98.2450)} L${p(19.0140, -98.2520)}`;
+  const nino = `M${p(19.0350, -98.2400)} L${p(19.0300, -98.2330)} L${p(19.0250, -98.2290)}`;
+  const cincoMayo = `M${p(19.0600, -98.1880)} L${p(19.0450, -98.1890)} L${p(19.0300, -98.1900)} L${p(19.0120, -98.1910)}`;
+  const reforma = `M${p(19.0446, -98.2120)} L${p(19.0446, -98.1850)}`;
+  const diagonal = `M${p(19.0420, -98.2000)} L${p(19.0360, -98.2090)} L${p(19.0300, -98.2150)}`;
+  const periferico = `M${p(19.0600, -98.2480)} C${p(19.0450, -98.2520)} ${p(19.0300, -98.2500)} ${p(19.0120, -98.2440)}`;
+  const rio = `M${p(19.0600, -98.2260)} C${p(19.0500, -98.2300)} ${p(19.0420, -98.2180)} ${p(19.0350, -98.2210)} S${p(19.0220, -98.2180)} ${p(19.0120, -98.2230)}`;
+  const zA = proyectar(19.0360, -98.2420), zB = proyectar(19.0190, -98.2250);
+  const pb = proyectar(19.0476, -98.2058);
+  return `
+  <rect x="-2000" y="-2000" width="${MAPA.W + 4000}" height="${MAPA.H + 4000}" fill="#eef1e6"/>
+  <rect x="${zA.x}" y="${zA.y}" width="${zB.x - zA.x}" height="${zB.y - zA.y}" rx="40" fill="#ece5f6"/>
+  <rect x="${z.x - 160}" y="${z.y - 160}" width="320" height="320" rx="30" fill="#efe6d4"/>
+  <g stroke="#fff" stroke-width="3" opacity=".9" transform="rotate(-8 ${z.x} ${z.y})">${cuadricula}</g>
+  <path d="${rio}" stroke="#9cc9e8" stroke-width="12" fill="none" stroke-linecap="round"/>
+  ${calle(periferico, 10)}${calle(cincoMayo, 10)}${calle(atlixcayotl, 11)}${calle(juarez, 9)}${calle(nino, 7)}${calle(reforma, 6)}${calle(diagonal, 6)}
+  <rect x="${pb.x - 8}" y="${pb.y - 18}" width="16" height="36" rx="4" fill="#a7d38b"/>
+  <rect x="${z.x - 10}" y="${z.y - 10}" width="20" height="20" rx="3" fill="#a7d38b"/>
+  <g font-family="Segoe UI, system-ui, sans-serif" font-weight="700" fill="#6b6455" font-size="15">
+    ${texto(z.x - 60, z.y - 120, "CENTRO HISTÓRICO", 'letter-spacing="2" font-size="14"')}
+    ${texto(z.x + 14, z.y + 26, "Zócalo", 'font-size="13"')}
+    ${texto(pb.x - 70, pb.y - 24, "Paseo Bravo", 'font-size="13"')}
+    ${texto(proyectar(19.0532, -98.2230).x, proyectar(19.0532, -98.2230).y - 10, "Av. Juárez", 'transform="rotate(-14 ' + proyectar(19.0532, -98.2230).x + ' ' + proyectar(19.0532, -98.2230).y + ')"')}
+    ${texto(proyectar(19.0295, -98.2280).x, proyectar(19.0295, -98.2280).y + 26, "Vía Atlixcáyotl", 'transform="rotate(27 ' + proyectar(19.0295, -98.2280).x + ' ' + proyectar(19.0295, -98.2280).y + ')"')}
+    ${texto(zA.x + 20, zA.y + 30, "ANGELÓPOLIS", 'letter-spacing="2" font-size="14" fill="#7c6a9a"')}
+    ${texto(proyectar(19.0440, -98.2245).x + 8, proyectar(19.0440, -98.2245).y, "Río Atoyac", 'fill="#4f86ad" font-size="13"')}
+    ${texto(proyectar(19.0560, -98.1875).x + 8, proyectar(19.0560, -98.1875).y, "Blvd. 5 de Mayo", 'font-size="13"')}
+    ${texto(proyectar(19.0180, -98.2475).x - 10, proyectar(19.0180, -98.2475).y - 20, "Periférico", 'font-size="13"')}
+  </g>`;
+}
+const DIBUJO_MAPA = dibujoMapa();
+
+/* Mapa real (OpenStreetMap con Leaflet) cuando hay internet; si las teselas no cargan se usa el esquema. */
+let mapaReal = null, sinTeselas = false;
+const mapasActivos = [];   // mapas de Leaflet en pantalla; se destruyen al cambiar de vista
+function cerrarMapas() { while (mapasActivos.length) { const m = mapasActivos.pop(); try { m.stop(); m.off(); m.remove(); } catch (_) {} } mapaReal = null; }
+const puedeMapaReal = () => !!window.L && !sinTeselas && navigator.onLine !== false;
+const puedeGPS = () => "geolocation" in navigator && window.isSecureContext && window.self === window.top;
+const esquemaHTML = (idPines, pines = "") => `<svg aria-hidden="true">${DIBUJO_MAPA}</svg><div class="mapa__pines"${idPines ? ` id="${idPines}"` : ""}>${pines}</div>`;
+function iniciarMapaReal(lienzo, { interactivo, alTocar, alFallar, centro = [19.0433, -98.1981], zoom = 14 }) {
+  lienzo.innerHTML = "";
+  const m = L.map(lienzo, { zoomControl: false, scrollWheelZoom: interactivo, dragging: true, keyboard: interactivo, fadeAnimation: false }).setView(centro, zoom, { animate: false });
+  const capa = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(m);
+  let cargadas = 0, errores = 0, caido = false;
+  const fallar = () => { if (caido) return; caido = true; sinTeselas = true; setTimeout(() => { try { m.stop(); m.off(); m.remove(); } catch (_) {} const i = mapasActivos.indexOf(m); if (i >= 0) mapasActivos.splice(i, 1); lienzo.className = "mapa__lienzo"; alFallar(); }, 0); };
+  capa.on("tileload", () => { cargadas += 1; });
+  capa.on("tileerror", () => { errores += 1; if (errores >= 3 && cargadas === 0) fallar(); });
+  setTimeout(() => { if (cargadas === 0 && document.body.contains(lienzo)) fallar(); }, 8000);
+  if (alTocar) m.on("click", (e) => alTocar({ lat: e.latlng.lat, lng: e.latlng.lng }));
+  mapasActivos.push(m);
+  return m;
+}
+
+/* Mapa interactivo: arrastrar, acercar (rueda, pellizco o botones) y marcar ubicación. */
+function crearMapa(contenedor, opciones) {
+  const svg = contenedor.querySelector("svg");
+  const capa = contenedor.querySelector(".mapa__pines");
+  let vb = { x: 0, y: 0, w: MAPA.W, h: MAPA.H };
+  const punteros = new Map();
+  let inicio = null, movido = false;
+  const tam = () => contenedor.getBoundingClientRect();
+  function aplicar() {
+    const r = tam(); if (!r.width || !r.height) return;
+    vb.h = vb.w * (r.height / r.width);
+    svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+    capa.querySelectorAll("[data-lat]").forEach((el) => {
+      const q = proyectar(Number(el.dataset.lat), Number(el.dataset.lng));
+      el.style.left = `${((q.x - vb.x) / vb.w) * 100}%`; el.style.top = `${((q.y - vb.y) / vb.h) * 100}%`;
+    });
+  }
+  function ajustar(puntos) {
+    const r = tam(); if (!r.width) return;
+    const xs = puntos.map((p) => proyectar(p.lat, p.lng));
+    let minX = Math.min(...xs.map((p) => p.x)), maxX = Math.max(...xs.map((p) => p.x));
+    let minY = Math.min(...xs.map((p) => p.y)), maxY = Math.max(...xs.map((p) => p.y));
+    const margen = 70; minX -= margen; maxX += margen; minY -= margen; maxY += margen;
+    let w = Math.max(maxX - minX, 420), h = Math.max(maxY - minY, 300);
+    const asp = r.height / r.width;
+    if (h / w > asp) w = h / asp; else h = w * asp;
+    vb = { x: (minX + maxX) / 2 - w / 2, y: (minY + maxY) / 2 - h / 2, w, h };
+    aplicar();
+  }
+  function zoom(f, cx, cy) {
+    const r = tam(); if (!r.width) return; const px = cx ?? r.width / 2, py = cy ?? r.height / 2;
+    const mx = vb.x + (px / r.width) * vb.w, my = vb.y + (py / r.height) * vb.h;
+    const w = Math.min(1800, Math.max(110, vb.w * f));
+    vb.x = mx - (px / r.width) * w; vb.y = my - (py / r.height) * (w * r.height / r.width); vb.w = w; aplicar();
+  }
+  if (opciones.interactivo) {
+    contenedor.addEventListener("wheel", (e) => { e.preventDefault(); const r = tam(); zoom(e.deltaY > 0 ? 1.15 : 0.87, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+    contenedor.addEventListener("pointerdown", (e) => {
+      if (e.target.closest(".pin, button, .ficha-mapa")) return;
+      contenedor.setPointerCapture(e.pointerId); punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      inicio = { vb: { ...vb }, x: e.clientX, y: e.clientY, d: null }; movido = false;
+      if (punteros.size === 2) { const [a, b] = [...punteros.values()]; inicio.d = Math.hypot(a.x - b.x, a.y - b.y); inicio.cx = (a.x + b.x) / 2; inicio.cy = (a.y + b.y) / 2; }
+    });
+    contenedor.addEventListener("pointermove", (e) => {
+      if (!punteros.has(e.pointerId) || !inicio) return;
+      punteros.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const r = tam();
+      if (punteros.size === 2 && inicio.d) {
+        const [a, b] = [...punteros.values()]; const d = Math.hypot(a.x - b.x, a.y - b.y);
+        vb = { ...inicio.vb }; zoom(inicio.d / d, inicio.cx - r.left, inicio.cy - r.top); movido = true; return;
+      }
+      const dx = e.clientX - inicio.x, dy = e.clientY - inicio.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) { movido = true; contenedor.classList.add("arrastrando"); }
+      vb.x = inicio.vb.x - (dx / r.width) * vb.w; vb.y = inicio.vb.y - (dy / r.height) * vb.h; aplicar();
+    });
+    const soltar = (e) => {
+      if (!punteros.has(e.pointerId)) return;
+      punteros.delete(e.pointerId); contenedor.classList.remove("arrastrando");
+      if (!movido && punteros.size === 0 && opciones.alTocar) {
+        const r = tam(); const x = vb.x + ((e.clientX - r.left) / r.width) * vb.w, y = vb.y + ((e.clientY - r.top) / r.height) * vb.h;
+        opciones.alTocar(desproyectar(x, y));
+      }
+      if (punteros.size === 0) inicio = null;
+      else { const [p] = [...punteros.values()]; inicio = { vb: { ...vb }, x: p.x, y: p.y, d: null }; }
+    };
+    contenedor.addEventListener("pointerup", soltar); contenedor.addEventListener("pointercancel", soltar);
+  }
+  const ro = new ResizeObserver(() => aplicar()); ro.observe(contenedor);
+  return { aplicar, ajustar, zoom, centrar: (lat, lng, w = 260) => { const q = proyectar(lat, lng); const r = tam(); if (!r.width) return; vb.w = w; vb.h = w * r.height / r.width; vb.x = q.x - w / 2; vb.y = q.y - vb.h / 2; aplicar(); } };
+}
+
+/* =====================================================================
+   REGLAS DE NEGOCIO
+   ===================================================================== */
+function horarios(r, dia) {
+  const hoy = ahora(); const d0 = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate());
+  const h0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  if (d0 < h0) return [];
+  const minimo = d0.getTime() === h0.getTime() ? hoy.getHours() * 60 + hoy.getMinutes() + 30 : 0;
+  const lista = [];
+  for (let m = aMin(r.abre); m <= aMin(r.cierra) - 60; m += 30) if (m >= minimo) lista.push(deMin(m));
+  return lista;
+}
+function responderRestaurante(res) {
+  const r = REST.get(res.restaurante), f = leer(res.fecha), min = f.getHours() * 60 + f.getMinutes();
+  if (min < aMin(r.abre) || min >= aMin(r.cierra)) return ["RECHAZADA", `A esa hora el local está cerrado. Abrimos de ${r.abre} a ${r.cierra}.`];
+  const ocupados = estado.reservas.filter((o) => o.id !== res.id && o.restaurante === r.id && o.fecha === res.fecha && o.estado === "CONFIRMADA").reduce((s, o) => s + o.personas, 0);
+  const libres = r.cupo - ocupados;
+  if (res.personas > libres) {
+    return ["RECHAZADA", libres <= 0 ? `Ya no tenemos mesas disponibles a las ${horaTxt(f)}. Prueba con otro horario.` : `Solo nos quedan lugares para ${personasTxt(libres)} a las ${horaTxt(f)}. Prueba otro horario o menos personas.`];
+  }
+  const faltan = res.necesidades.filter((n) => !r.caract.includes(n));
+  return ["CONFIRMADA", faltan.length ? `Te esperamos. Toma en cuenta que no contamos con: ${etiquetas(faltan)}.` : "¡Te esperamos! Prepararemos tu mesa según tus necesidades."];
+}
+function agregarAviso(tipo, titulo, cuerpo, reserva = null) {
+  const a = { id: Date.now() + Math.random(), tipo, titulo, cuerpo, reserva, creado: isoFechaHora(ahora()), leido: false };
+  estado.avisos.unshift(a); estado.avisos = estado.avisos.slice(0, 60);
+  mostrarToast(a); return a;
+}
+/* Procesa respuestas del restaurante y recordatorios. Corre cada 2 s mientras la página está abierta. */
+function procesar() {
+  const t = ahora(); let cambio = false;
+  estado.reservas.forEach((res) => {
+    if (res.estado === "PENDIENTE" && res.respuestaEn && res.respuestaEn <= t.getTime()) {
+      const r = REST.get(res.restaurante); const f = leer(res.fecha);
+      const [nuevo, msg] = f <= t ? ["RECHAZADA", "El restaurante no respondió antes de la hora de la reserva."] : responderRestaurante(res);
+      res.estado = nuevo; res.mensaje = msg; res.respuestaEn = null; res.confirmadaEn = t.getTime(); cambio = true;
+      if (nuevo === "CONFIRMADA") agregarAviso("confirmada", "Reserva confirmada", `${r.nombre} confirmó tu reserva del ${fechaHoraLarga(f)} para ${personasTxt(res.personas)}.`, res.id);
+      else agregarAviso("rechazada", "Reserva no disponible", `${r.nombre} no pudo aceptar tu reserva del ${fechaHoraLarga(f)}. ${msg}`, res.id);
+    }
+    if (res.estado === "CONFIRMADA" && estado.perfil.recordatorios) {
+      const f = leer(res.fecha);
+      estado.perfil.anticipaciones.forEach((k) => {
+        const clave = `${res.id}-${k}`, en = f.getTime() - ANTICIPACIONES[k][0] * 60000;
+        if (!estado.enviados[clave] && en <= t.getTime() && t < f && en >= (res.confirmadaEn || 0) - 60000) {
+          estado.enviados[clave] = true; cambio = true;
+          agregarAviso("recordatorio", "Recordatorio de tu reserva", `Tu reserva en ${REST.get(res.restaurante).nombre} es ${ANTICIPACIONES[k][2]}: ${fechaHoraLarga(f)}, ${personasTxt(res.personas)}.`, res.id);
+        }
+      });
+    }
+  });
+  if (cambio) { guardar(); pintarCabecera(); if (["visitas", "inicio", "avisos"].includes(ruta().vista)) render(false); }
+}
+function estadisticas() {
+  const t = ahora();
+  const reservadas = estado.reservas.filter((r) => leer(r.fecha) > t && r.estado !== "RECHAZADA").length;
+  const visitadas = estado.reservas.filter((r) => leer(r.fecha) <= t && r.estado === "CONFIRMADA").length;
+  let corte = new Date(t.getFullYear(), t.getMonth(), DIA_CORTE);
+  if (t.getDate() > DIA_CORTE) corte = new Date(t.getFullYear(), t.getMonth() + 1, DIA_CORTE);
+  return { reservadas, visitadas, corte: `${corte.getDate()}-${mayus(MESES[corte.getMonth()].slice(0, 3))}` };
+}
+const perfilCompleto = () => estado.perfil.nombre.trim().length >= 3 && estado.perfil.telefono.trim().length > 0;
+function validarPerfil(d) {
+  const e = {}; const dig = d.telefono.replace(/\D/g, "");
+  if (d.nombre.trim().length < 3) e.nombre = "Escribe tu nombre completo.";
+  if (!d.telefono.trim()) e.telefono = "Escribe un teléfono para que el restaurante pueda contactarte.";
+  else if (/[^0-9 +()-]/.test(d.telefono) || dig.length < 10 || dig.length > 15) e.telefono = "Escribe un teléfono de 10 a 15 dígitos, por ejemplo 222 123 4567.";
+  if (!d.correo.trim()) e.correo = "Escribe tu correo electrónico.";
+  else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(d.correo.trim())) e.correo = "El correo no es válido. Ejemplo: nombre@correo.com";
+  if (d.recordatorios && !d.anticipaciones.length) e.anticipaciones = "Elige al menos un momento para el recordatorio.";
+  return e;
+}
+
+/* =====================================================================
+   INTERFAZ COMÚN
+   ===================================================================== */
+const contenido = document.getElementById("contenido");
+const VISTAS_NAV = [["inicio", "casa", "Inicio"], ["buscar", "buscar", "Buscar restaurante"], ["visitas", "visitas", "Mis visitas"], ["favoritos", "corazon", "Favoritos"], ["perfil", "usuario", "Perfil"]];
+function ruta() {
+  const h = (location.hash || "#inicio").slice(1);
+  const m = h.match(/^(restaurante|reservar|editar)-(\d+)$/);
+  if (m) return { vista: m[1], id: Number(m[2]) };
+  return { vista: ["inicio", "buscar", "visitas", "favoritos", "perfil", "avisos"].includes(h) ? h : "inicio", id: null };
+}
+function pintarCabecera() {
+  const s = estadisticas();
+  document.getElementById("stats").innerHTML = `<div><dt>${ico("calendario")} Reservadas</dt><dd>${s.reservadas}</dd></div><div><dt>${ico("check")} Visitadas</dt><dd>${s.visitadas}</dd></div><div><dt>${ico("calendario")} Fecha corte</dt><dd>${s.corte}</dd></div>`;
+  const sinLeer = estado.avisos.filter((a) => !a.leido).length;
+  const c = document.getElementById("campana");
+  c.innerHTML = ico("campana") + (sinLeer ? `<span class="contador">${sinLeer}</span>` : "");
+  c.setAttribute("aria-label", sinLeer ? `Avisos, ${sinLeer} sin leer` : "Avisos");
+  const v = ruta().vista, sec = { restaurante: "buscar", reservar: "buscar", editar: "visitas" }[v] || v;
+  const foto = estado.perfil.foto;
+  document.getElementById("barra").innerHTML = VISTAS_NAV.map(([k, i, t]) => `<li><a href="#${k}" ${sec === k ? 'aria-current="page"' : ""}>${k === "perfil" && foto ? `<img class="avatar-mini" src="${foto}" alt="">` : ico(i)}${k === "visitas" && s.reservadas ? `<span class="contador" aria-hidden="true">${s.reservadas}</span>` : ""}<span>${t}${k === "visitas" && s.reservadas ? `<span class="oculto"> (${s.reservadas} próximas)</span>` : ""}</span></a></li>`).join("");
+  const html = document.documentElement, p = estado.perfil;
+  html.className = `tema-${p.tema.toLowerCase()}${p.texto !== "NORMAL" ? " texto-" + p.texto.toLowerCase().replace("_", "-") : ""}${p.contraste ? " alto-contraste" : ""}`;
+}
+function mostrarToast(a, ms = 8000) {
+  const caja = document.getElementById("toasts");
+  const maximo = window.matchMedia("(max-width: 599px)").matches ? 1 : 2;
+  while (caja.children.length >= maximo) caja.firstElementChild.remove();
+  const iconos = { confirmada: "check", rechazada: "equis", recordatorio: "reloj" };
+  const t = document.createElement("div");
+  t.className = `toast toast--${a.tipo}`; t.setAttribute("role", a.tipo === "rechazada" ? "alert" : "status");
+  t.innerHTML = `${ico(iconos[a.tipo] || "campana")}<div><strong></strong><p></p></div><button type="button" aria-label="Cerrar aviso">×</button>`;
+  t.querySelector("strong").textContent = a.titulo; t.querySelector("p").textContent = a.cuerpo;
+  t.querySelector("button").onclick = () => t.remove();
+  document.getElementById("toasts").appendChild(t); setTimeout(() => t.remove(), ms);
+  const c = document.getElementById("campana"); c.classList.remove("sacudir"); void c.offsetWidth; c.classList.add("sacudir");
+}
+const avisoProto = (corto) => `<aside class="aviso-proto" aria-label="Aviso de prototipo">${ico("info")}<p><strong>Prototipo académico · sin convenios actuales.</strong> ${corto ? "Beneficios, calificaciones, cupos y accesibilidad son datos de ejemplo; la reserva no llega al restaurante." : AVISO_PROTOTIPO}</p></aside>`;
+const botonFav = (r) => { const f = estado.favoritos.includes(r.id); return `<button type="button" class="fav" data-accion="fav" data-id="${r.id}" aria-pressed="${f}" aria-label="${f ? "Quitar " + esc(r.nombre) + " de favoritos" : "Guardar " + esc(r.nombre) + " en favoritos"}">${ico("corazon")}</button>`; };
+const banner = (r) => `<article class="banner estilo-${r.estilo}${r.nombre.length > 16 ? " banner--largo" : ""}" style="--marca:${r.color};--acento:${r.acento}"><div class="banner__foto">${ilus(r.ilus)}</div><div class="banner__panel" aria-hidden="true"></div><div class="banner__marca"><a class="banner__enlace" href="#restaurante-${r.id}"><span class="banner__nombre">${esc(r.nombre)}</span></a><span class="banner__sub">${esc(r.cocina)}</span></div>${botonFav(r)}</article>`;
+const vacio = (icono, titulo, texto, extra = "") => `<div class="vacio">${ico(icono)}<h2>${titulo}</h2><p>${texto}</p>${extra}</div>`;
+
+/* =====================================================================
+   VISTAS
+   ===================================================================== */
+const VISTAS = {};
+
+VISTAS.inicio = () => {
+  const p = estado.perfil, t = ahora();
+  const prox = estado.reservas.filter((r) => leer(r.fecha) > t && r.estado !== "RECHAZADA").sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+  const demo = !perfilCompleto() && !estado.reservas.length ? `<div class="mensaje mensaje--aviso" role="status">${ico("info")}<div><p><strong>¿Vas a presentar la demo?</strong> Carga un perfil y reservas de ejemplo para ver la app funcionando.</p><div class="acciones"><button class="boton boton--primario" data-accion="demo">Cargar datos de demostración</button><a class="boton boton--secundario" href="#perfil">Crear mi perfil</a></div></div></div>` : "";
+  return `
+  <div class="bienvenida"><div><h1>${p.nombre ? "Hola, " + esc(p.nombre.trim().split(/\s+/)[0]) : "Te damos la bienvenida"}</h1><p class="subtitulo">Restaurantes de Puebla preparados para ti.</p></div>
+  <a class="boton boton--primario boton--grande" href="#buscar">${ico("mapa")} Buscar cerca de mí</a></div>
+  ${demo}
+  ${prox ? `<a class="proxima" href="#visitas"><span class="proxima__ico">${ico("calendario")}</span><span><strong>Tu próxima visita:</strong> ${esc(REST.get(prox.restaurante).nombre)}, ${fechaHoraLarga(leer(prox.fecha))} <span class="etiqueta etiqueta--${prox.estado === "CONFIRMADA" ? "ok" : "aviso"}">${prox.estado === "CONFIRMADA" ? "Confirmada" : "Esperando confirmación"}</span></span></a>` : ""}
+  <h2 class="titulo-seccion">Restaurantes con convenio</h2>
+  ${avisoProto(false)}
+  <ul class="banners" role="list">${[...RESTAURANTES].sort((a, b) => b.calificacion - a.calificacion).map((r) => `<li>${banner(r)}</li>`).join("")}</ul>`;
+};
+
+/* --- Buscar --- */
+const filtros = { q: "", cat: "", aptos: true, fav: false, c: [], radio: 0, orden: "cerca", modo: "lista" };
+let mapaBuscar = null, marcando = false;
+VISTAS.buscar = () => {
+  const p = estado.perfil, u = ubicacion();
+  return `
+  <h1 class="oculto">Buscar restaurante</h1>
+  ${avisoProto(true)}
+  <form class="buscador" role="search" data-form="buscar">${ico("buscar")}<label class="oculto" for="q">Nombre, comida o colonia</label><input id="q" type="search" placeholder="¿Qué se te antoja? Nombre o colonia" value="${esc(filtros.q)}" autocomplete="off"></form>
+  <div class="chips" role="group" aria-label="Tipo de comida">
+    ${[["", "Todas"], ...Object.entries(CATEGORIAS).map(([k, v]) => [k, v[0]])].map(([k, t]) => `<button type="button" class="chip" data-accion="cat" data-cat="${k}" aria-pressed="${filtros.cat === k}">${t}</button>`).join("")}
+  </div>
+  <div class="chips" role="group" aria-label="Filtros">
+    <button type="button" class="chip" data-accion="aptos" aria-pressed="${filtros.aptos && p.necesidades.length > 0}" ${p.necesidades.length ? "" : "disabled"}>${ico("accesible")} Aptos para mí</button>
+    <button type="button" class="chip" data-accion="soloFav" aria-pressed="${filtros.fav}">${ico("corazon")} Favoritos</button>
+    <button type="button" class="chip" data-accion="filtros" aria-haspopup="dialog" aria-pressed="${filtros.c.length > 0}">${ico("filtros")} Filtros${filtros.c.length ? ` <span class="contador">${filtros.c.length}</span>` : ""}</button>
+    <label class="chip">Distancia: <select data-campo="radio">${[[0, "cualquiera"], [1, "1 km"], [3, "3 km"], [5, "5 km"], [10, "10 km"]].map(([v, t]) => `<option value="${v}" ${filtros.radio === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <label class="chip">Ordenar: <select data-campo="orden">${[["cerca", "más cerca"], ["calificacion", "mejor calificados"], ["nombre", "nombre"]].map(([v, t]) => `<option value="${v}" ${filtros.orden === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+  </div>
+  ${p.necesidades.length ? "" : `<p class="ayuda">Agrega tus necesidades en <a href="#perfil">Perfil</a> para ver solo los lugares aptos para ti.</p>`}
+  <div class="resumen-busqueda"><h2 id="total" aria-live="polite"></h2>
+    <p class="ubicacion">${ico("ubicacion")} <span id="desde">Desde ${esc(u.nombre)}</span>
+      <label class="oculto" for="zona">Cambiar zona</label>
+      <select id="zona" data-campo="zona"><option value="">Cambiar zona…</option>${Object.entries(ZONAS).map(([k, z]) => `<option value="${k}">${z[0]}</option>`).join("")}</select>
+      ${puedeGPS() ? `<button type="button" class="boton boton--texto" data-accion="gps">${ico("mira")} Usar mi ubicación</button>` : ""}</p>
+  </div>
+  <div class="segmentos" role="group" aria-label="Vista"><button type="button" data-accion="modo" data-modo="lista" aria-pressed="${filtros.modo === "lista"}">${ico("lista")} Lista</button><button type="button" data-accion="modo" data-modo="mapa" aria-pressed="${filtros.modo === "mapa"}">${ico("mapa")} Mapa</button></div>
+  <div class="buscar" data-modo="${filtros.modo}">
+    <section class="buscar__lista" aria-labelledby="total"><ul class="lugares" id="lugares" role="list"></ul><div id="sin" hidden>${vacio("buscar", "No encontramos restaurantes con esos filtros", "Prueba ampliando la distancia o quitando algún filtro.", `<button class="boton boton--secundario" data-accion="limpiar">Quitar filtros</button>`)}</div></section>
+    <div class="buscar__mapa" role="region" aria-label="Mapa de restaurantes">
+      <div class="mapa" id="mapa"><div class="mapa__lienzo" id="lienzo">${esquemaHTML("pines")}</div>
+        <div class="mapa__controles"><button type="button" data-accion="zoom" data-f="0.7" aria-label="Acercar">+</button><button type="button" data-accion="zoom" data-f="1.4" aria-label="Alejar">−</button><button type="button" data-accion="marcar" aria-pressed="false" aria-label="Marcar dónde estoy en el mapa" title="Marcar dónde estoy">${ico("mira")}</button></div>
+        <p class="mapa__nota" id="nota-mapa">Arrastra para moverte; toca ⊕ para marcar dónde estás.</p>
+      </div>
+    </div>
+  </div>`;
+};
+function resultados() {
+  const p = estado.perfil, u = ubicacion();
+  const req = new Set([...filtros.c, ...(filtros.aptos ? p.necesidades : [])]);
+  const q = filtros.q.trim().toLowerCase();
+  let lista = RESTAURANTES.map((r) => ({ r, km: distanciaKm(u, r) })).filter(({ r, km }) =>
+    [...req].every((c) => r.caract.includes(c)) && (!filtros.cat || r.categoria === filtros.cat) && (!filtros.fav || estado.favoritos.includes(r.id)) &&
+    (!q || `${r.nombre} ${r.cocina} ${r.direccion}`.toLowerCase().includes(q)) && (!filtros.radio || km <= filtros.radio));
+  lista.sort({ cerca: (a, b) => a.km - b.km, calificacion: (a, b) => b.r.calificacion - a.r.calificacion || a.km - b.km, nombre: (a, b) => a.r.nombre.localeCompare(b.r.nombre, "es") }[filtros.orden]);
+  return lista;
+}
+function pintarResultados(reajustar = true) {
+  const p = estado.perfil, lista = resultados(), u = ubicacion();
+  document.getElementById("total").textContent = `${lista.length} ${lista.length === 1 ? "restaurante" : "restaurantes"}${filtros.radio ? ` a menos de ${filtros.radio} km` : ""}`;
+  document.getElementById("desde").textContent = `Desde ${u.nombre}`;
+  document.getElementById("sin").hidden = lista.length > 0;
+  document.getElementById("lugares").innerHTML = lista.map(({ r, km }) => {
+    const faltan = p.necesidades.filter((n) => !r.caract.includes(n));
+    return `<li class="lugar" data-id="${r.id}" style="--marca:${r.color}"><div class="lugar__foto">${ilus(r.ilus)}<span class="lugar__insignia">${ico("regalo")} Convenio (demo)</span>${botonFav(r)}</div>
+      <div class="lugar__fila"><h3><a href="#restaurante-${r.id}">${esc(r.nombre)}</a></h3><span class="estrella">${ico("estrella")} ${r.calificacion.toFixed(1)}</span></div>
+      <p class="lugar__sub">${esc(r.cocina)} · ${"$".repeat(r.precio)} · ${distTxt(km)}</p><p class="lugar__beneficio">${esc(r.beneficio)}</p>
+      ${p.necesidades.length ? (faltan.length ? `<p class="etiqueta etiqueta--aviso">${ico("alerta")} Sin: ${etiquetas(faltan)}</p>` : `<p class="etiqueta etiqueta--ok">${ico("check")} Apto para ti</p>`) : ""}</li>`;
+  }).join("");
+  const contenidoPin = (r) => `★ ${r.calificacion.toFixed(1)}<span class="pin__nombre">· ${esc(r.nombre)}</span>`;
+  if (mapaReal) {
+    const { m, grupo } = mapaReal; grupo.clearLayers();
+    lista.forEach(({ r }) => {
+      L.marker([r.lat, r.lng], { icon: L.divIcon({ className: "pin-contenedor", html: `<span class="pin" data-id="${r.id}" style="--pin:${r.color}">${contenidoPin(r)}</span>`, iconSize: [0, 0] }), title: r.nombre, alt: `${r.nombre}, ${r.calificacion} estrellas`, keyboard: true, riseOnHover: true })
+        .on("click", () => fichaMapa(r.id)).addTo(grupo);
+    });
+    L.marker([u.lat, u.lng], { icon: L.divIcon({ className: "pin-contenedor", html: '<span class="pin-yo"></span>', iconSize: [0, 0] }), keyboard: false, interactive: false, zIndexOffset: -500 }).addTo(grupo);
+    if (reajustar) m.fitBounds(L.latLngBounds([...lista.map(({ r }) => [r.lat, r.lng]), [u.lat, u.lng]]), { padding: [56, 56], maxZoom: 16, animate: false });
+  } else {
+    const pines = document.getElementById("pines");
+    if (pines) pines.innerHTML = lista.map(({ r }) => `<button type="button" class="pin" data-accion="pin" data-id="${r.id}" data-lat="${r.lat}" data-lng="${r.lng}" style="--pin:${r.color}" aria-label="${esc(r.nombre)}, ${r.calificacion} estrellas">${contenidoPin(r)}</button>`).join("") +
+      `<span class="pin-yo" data-lat="${u.lat}" data-lng="${u.lng}" title="Tu ubicación"></span>`;
+    if (mapaBuscar) { if (reajustar) mapaBuscar.ajustar([...lista.map(({ r }) => r), u]); else mapaBuscar.aplicar(); }
+  }
+}
+function fichaMapa(id) {
+  const r = REST.get(id), u = ubicacion(), mapa = document.getElementById("mapa");
+  mapa.querySelector(".ficha-mapa")?.remove();
+  document.querySelectorAll(".pin.activo, .lugar.resaltado").forEach((e) => e.classList.remove("activo", "resaltado"));
+  document.querySelector(`.pin[data-id="${id}"]`)?.classList.add("activo");
+  document.querySelector(`.lugar[data-id="${id}"]`)?.classList.add("resaltado");
+  const f = document.createElement("div"); f.className = "ficha-mapa"; f.setAttribute("role", "dialog"); f.setAttribute("aria-label", r.nombre);
+  f.innerHTML = `<button class="ficha-mapa__cerrar" data-accion="cerrarFicha" aria-label="Cerrar">×</button><strong>${esc(r.nombre)}</strong><p>${esc(r.cocina)} · ★ ${r.calificacion.toFixed(1)} · ${distTxt(distanciaKm(u, r))}<br>${esc(r.direccion)}</p><div class="acciones"><a class="boton boton--secundario" href="#restaurante-${r.id}">Ver lugar</a><a class="boton boton--primario" href="#reservar-${r.id}">Reservar</a></div>`;
+  mapa.appendChild(f);
+}
+function montarBuscar() {
+  const mapaEl = document.getElementById("mapa"), lienzo = document.getElementById("lienzo");
+  const alTocar = (pt) => {
+    if (!marcando) { mapaEl.querySelector(".ficha-mapa")?.remove(); document.querySelectorAll(".pin.activo, .lugar.resaltado").forEach((e) => e.classList.remove("activo", "resaltado")); return; }
+    estado.yo = { lat: pt.lat, lng: pt.lng }; marcando = false; guardar();
+    mapaEl.classList.remove("marcando"); document.querySelector('[data-accion="marcar"]').setAttribute("aria-pressed", "false");
+    document.getElementById("nota-mapa").textContent = "Ubicación marcada. Las distancias se calculan desde ese punto.";
+    pintarResultados(false);
+  };
+  const usarEsquema = () => {
+    mapaReal = null; lienzo.innerHTML = esquemaHTML("pines");
+    mapaBuscar = crearMapa(lienzo, { interactivo: true, alTocar });
+    document.getElementById("nota-mapa").textContent = "Mapa esquemático de Puebla (sin conexión al mapa real). Arrastra para moverte.";
+    pintarResultados();
+  };
+  mapaBuscar = null; mapaReal = null;
+  if (lienzo.getBoundingClientRect().width > 0) {
+    if (puedeMapaReal()) {
+      const m = iniciarMapaReal(lienzo, { interactivo: true, alTocar, alFallar: usarEsquema });
+      mapaReal = { m, grupo: L.layerGroup().addTo(m) };
+    } else mapaBuscar = crearMapa(lienzo, { interactivo: true, alTocar });
+  }
+  document.getElementById("q").addEventListener("input", (e) => { filtros.q = e.target.value; pintarResultados(); });
+  document.getElementById("lugares").addEventListener("mouseover", (e) => { const li = e.target.closest(".lugar"); document.querySelectorAll(".pin.activo").forEach((x) => x.classList.remove("activo")); if (li) document.querySelector(`.pin[data-id="${li.dataset.id}"]`)?.classList.add("activo"); });
+  pintarResultados();
+  requestAnimationFrame(() => pintarResultados());
+}
+
+/* --- Detalle --- */
+VISTAS.restaurante = (id) => {
+  const r = REST.get(id); if (!r) return vacio("info", "No encontramos este restaurante", "", `<a class="boton boton--primario" href="#buscar">Buscar restaurantes</a>`);
+  const nec = estado.perfil.necesidades;
+  return `<a class="volver" href="#buscar">${ico("volver")} Volver a buscar</a>
+  <div class="portada">${banner(r)}</div>
+  <div class="titulo-rest"><h1 style="margin:0">${esc(r.nombre)}</h1><span class="meta"><span class="estrella">${ico("estrella")} ${r.calificacion.toFixed(1)}</span><span>${esc(r.cocina)}</span><span aria-label="Precio ${["", "económico", "moderado", "alto"][r.precio]}">${"$".repeat(r.precio)}</span></span></div>
+  <div class="columnas"><div>
+    <section class="panel"><h2 class="panel__titulo">Acerca del lugar</h2><p>${esc(r.descripcion)}</p></section>
+    <section class="panel"><h2 class="panel__titulo">${ico("accesible")} Accesibilidad <span class="etiqueta">datos de ejemplo</span></h2>${nec.length ? `<p class="ayuda">Marcamos con «Lo necesitas» lo que indicaste en tu perfil.</p>` : ""}
+      <ul class="acc" role="list">${Object.entries(CARACTERISTICAS).map(([k, t]) => { const si = r.caract.includes(k), n = nec.includes(k); return `<li class="${si ? "si" : "no"}${n ? " necesita" : ""}"><span class="marca">${ico(si ? "check" : "equis")}</span><span>${t}<span class="oculto">: ${si ? "sí" : "no"}</span></span>${n ? `<span class="etiqueta ${si ? "etiqueta--ok" : "etiqueta--error"}">Lo necesitas</span>` : ""}</li>`; }).join("")}</ul></section>
+    <section class="panel"><h2 class="panel__titulo">${ico("ubicacion")} Ubicación</h2><p>${esc(r.direccion)}, Puebla, Pue.</p><div class="mapa mapa--mini" role="region" aria-label="Mapa con la ubicación aproximada de ${esc(r.nombre)}"><div class="mapa__lienzo" id="mini">${esquemaHTML("", `<span class="pin activo" style="--pin:${r.color}" data-lat="${r.lat}" data-lng="${r.lng}">${esc(r.nombre)}</span>`)}</div></div></section>
+  </div>
+  <aside class="panel"><h2 class="panel__titulo">Reserva tu mesa</h2>${avisoProto(true)}
+    <div class="beneficio">${ico("regalo")}<div><strong>Beneficio de ejemplo</strong><p>${esc(r.beneficio)}</p></div></div>
+    <dl class="datos"><div><dt>${ico("reloj")} Horario (ejemplo)</dt><dd>${r.abre} a ${r.cierra}</dd></div><div><dt>${ico("ubicacion")} Dirección</dt><dd>${esc(r.direccion)}</dd></div><div><dt>${ico("telefono")} Teléfono</dt><dd>${esc(r.telefono)}</dd></div></dl>
+    <a class="boton boton--primario boton--ancho boton--grande" href="#reservar-${r.id}">${ico("calendario")} Reservar mesa</a>
+    <p class="ayuda" style="text-align:center;margin-top:.5rem">El restaurante confirmará tu reserva y te avisaremos.</p>
+  </aside></div>`;
+};
+function montarDetalle(id) {
+  const r = REST.get(id), el = document.getElementById("mini"); if (!r || !el) return;
+  const pinHTML = `<span class="pin activo" style="--pin:${r.color}" data-lat="${r.lat}" data-lng="${r.lng}">${esc(r.nombre)}</span>`;
+  const esquema = () => { el.innerHTML = esquemaHTML("", pinHTML); crearMapa(el, { interactivo: false }).centrar(r.lat, r.lng, 240); };
+  if (!puedeMapaReal()) { esquema(); return; }
+  const m = iniciarMapaReal(el, { interactivo: false, alFallar: esquema, centro: [r.lat, r.lng], zoom: 16 });
+  L.marker([r.lat, r.lng], { icon: L.divIcon({ className: "pin-contenedor", html: pinHTML.replace(/ data-lat="[^"]*" data-lng="[^"]*"/, ""), iconSize: [0, 0] }), keyboard: false, interactive: false }).addTo(m);
+}
+
+/* --- Reservar / editar --- */
+let borrador = null;
+function nuevoBorrador(r, res) {
+  if (res) { const f = leer(res.fecha); return { restaurante: r.id, edita: res.id, dia: isoFecha(f), hora: horaTxt(f), personas: res.personas, necesidades: [...res.necesidades], notas: res.notas, errores: {} }; }
+  let dia = new Date(); if (!horarios(r, dia).length) dia.setDate(dia.getDate() + 1);
+  return { restaurante: r.id, edita: null, dia: isoFecha(dia), hora: "", personas: 2, necesidades: [...estado.perfil.necesidades], notas: "", errores: {} };
+}
+function formularioReserva(r, res) {
+  const clave = `${r.id}-${res ? res.id : "n"}`;
+  if (!borrador || borrador.clave !== clave) { borrador = nuevoBorrador(r, res); borrador.clave = clave; }
+  const b = borrador, hoy = new Date(), dias = [];
+  for (let i = 0; i < DIAS_RESERVA; i++) { const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + i); dias.push(d); }
+  const horas = horarios(r, leer(b.dia)), completo = perfilCompleto();
+  const etDia = (d, i) => i === 0 ? "Hoy" : i === 1 ? "Mañana" : DIAS[d.getDay()].slice(0, 3);
+  const e = b.errores;
+  return `<a class="volver" href="${res ? "#visitas" : "#restaurante-" + r.id}">${ico("volver")} ${res ? "Volver a mis visitas" : "Volver a " + esc(r.nombre)}</a>
+  <div class="encabezado"><h1>${res ? "Modificar reserva" : "Reservar en " + esc(r.nombre)}</h1><p class="subtitulo">${res ? `Al guardar los cambios, ${esc(r.nombre)} volverá a confirmar tu reserva.` : "Completa los 4 pasos. El restaurante revisará tu solicitud y te avisaremos."}</p></div>
+  ${Object.keys(e).length ? `<div class="mensaje mensaje--error" role="alert" tabindex="-1" id="errores">${ico("alerta")}<div><p><strong>No pudimos enviar la reserva:</strong></p><ul>${Object.values(e).map((x) => `<li>${x}</li>`).join("")}</ul></div></div>` : ""}
+  ${completo ? "" : `<div class="mensaje mensaje--aviso" role="status">${ico("info")}<p>Para reservar necesitamos tu nombre y teléfono, así el restaurante puede contactarte. <a href="#perfil">Completar mi perfil</a>.</p></div>`}
+  <div class="columnas"><div>
+    <section class="panel"><h2 class="panel__titulo"><span class="paso" aria-hidden="true">1</span> ¿Qué día?</h2>
+      <div class="dias" role="group" aria-label="Día de la visita">${dias.map((d, i) => `<button type="button" class="dia" data-accion="dia" data-dia="${isoFecha(d)}" aria-pressed="${b.dia === isoFecha(d)}" aria-label="${fechaLarga(d)}"><small>${etDia(d, i)}</small><strong>${d.getDate()}</strong><small>${MESES[d.getMonth()].slice(0, 3)}</small></button>`).join("")}</div></section>
+    <section class="panel"><h2 class="panel__titulo"><span class="paso" aria-hidden="true">2</span> ¿A qué hora?</h2>
+      <p class="ayuda">Horario del local (ejemplo): ${r.abre} a ${r.cierra}</p>
+      <div class="horas" role="group" aria-label="Horarios disponibles">${horas.length ? horas.map((h) => `<button type="button" class="hora" data-accion="hora" data-hora="${h}" aria-pressed="${b.hora === h}">${h}</button>`).join("") : `<p class="ayuda">No quedan horarios para este día. Elige otro.</p>`}</div>
+      ${e.hora ? `<p class="error">${e.hora}</p>` : ""}</section>
+    <section class="panel"><h2 class="panel__titulo"><span class="paso" aria-hidden="true">3</span> ¿Cuántas personas?</h2>
+      <div class="personas"><button type="button" class="redondo" data-accion="personas" data-paso="-1" aria-label="Quitar una persona" ${b.personas <= 1 ? "disabled" : ""}>−</button><output aria-live="polite">${b.personas}<span class="oculto"> ${b.personas === 1 ? "persona" : "personas"}</span></output><button type="button" class="redondo" data-accion="personas" data-paso="1" aria-label="Agregar una persona" ${b.personas >= MAX_PERSONAS ? "disabled" : ""}>+</button></div>
+      <p class="ayuda" style="margin-top:.4rem">Incluyéndote. Máximo ${MAX_PERSONAS}.</p></section>
+    <section class="panel"><h2 class="panel__titulo"><span class="paso" aria-hidden="true">4</span> Necesidades y notas</h2>
+      <fieldset><legend>¿Qué necesitan en esta visita? <span class="ayuda">(marcamos las de tu perfil)</span></legend><div class="opciones opciones--2">
+      ${Object.entries(CARACTERISTICAS).map(([k, t]) => `<label class="opcion"><input type="checkbox" data-campo="necesidad" value="${k}" ${b.necesidades.includes(k) ? "checked" : ""}><span>${t}${r.caract.includes(k) ? "" : "<small>El local no cuenta con esto (ejemplo)</small>"}</span></label>`).join("")}</div></fieldset>
+      <div class="campo"><label for="notas">Notas para el restaurante <span class="ayuda">(opcional)</span></label><textarea id="notas" data-campo="notas" rows="3" maxlength="300" placeholder="Ej. Vamos con una persona en silla de ruedas y un bebé.">${esc(b.notas)}</textarea></div></section>
+  </div>
+  <aside class="panel"><h2 class="panel__titulo">Resumen</h2>${avisoProto(true)}
+    <div class="mini-rest" style="--marca:${r.color};--acento:${r.acento}"><span class="inicial" aria-hidden="true">${esc(r.nombre[0])}</span><div><strong>${esc(r.nombre)}</strong><p class="ayuda" style="margin:0">${esc(r.direccion)}</p></div></div>
+    <p class="resumen-linea" id="resumen">${mayus(fechaLarga(leer(b.dia)))}${b.hora ? " a las " + b.hora : " · falta elegir la hora"} · ${personasTxt(b.personas)}</p>
+    <button type="button" class="boton boton--primario boton--ancho boton--grande" data-accion="enviarReserva" ${completo ? "" : "disabled"}>${ico("check")} ${res ? "Guardar cambios" : "Enviar solicitud"}</button>
+    <p class="ayuda" style="text-align:center;margin-top:.5rem">Te avisaremos aquí cuando el restaurante responda.</p>
+  </aside></div>`;
+}
+VISTAS.reservar = (id) => { const r = REST.get(id); return r ? formularioReserva(r, null) : VISTAS.restaurante(id); };
+VISTAS.editar = (id) => {
+  const res = estado.reservas.find((x) => x.id === id);
+  if (!res || leer(res.fecha) <= ahora()) return vacio("calendario", "Esta reserva ya no se puede modificar", "Puede que ya haya pasado o se haya eliminado.", `<a class="boton boton--primario" href="#visitas">Ir a Mis visitas</a>`);
+  return formularioReserva(REST.get(res.restaurante), res);
+};
+function enviarReserva() {
+  const b = borrador, r = REST.get(b.restaurante); b.errores = {};
+  if (!perfilCompleto()) { location.hash = "#perfil"; return; }
+  if (!b.hora) b.errores.hora = "Elige un horario.";
+  else if (!horarios(r, leer(b.dia)).includes(b.hora)) b.errores.hora = "Ese horario ya no está disponible. Elige otro.";
+  if (Object.keys(b.errores).length) { render(false); document.getElementById("errores")?.focus(); return; }
+  const fecha = `${b.dia}T${b.hora}`, t = Date.now();
+  if (b.edita) {
+    const res = estado.reservas.find((x) => x.id === b.edita);
+    Object.assign(res, { fecha, personas: b.personas, necesidades: [...b.necesidades], notas: b.notas.trim(), estado: "PENDIENTE", mensaje: null, respuestaEn: t + RESPUESTA_SEG * 1000, confirmadaEn: null });
+    Object.keys(estado.enviados).filter((k) => k.startsWith(res.id + "-")).forEach((k) => delete estado.enviados[k]);
+    flash = ["exito", "Cambios enviados. El restaurante revisará de nuevo tu reserva y te avisaremos."];
+  } else {
+    estado.reservas.push({ id: estado.siguiente++, restaurante: r.id, fecha, personas: b.personas, necesidades: [...b.necesidades], notas: b.notas.trim(), estado: "PENDIENTE", mensaje: null, respuestaEn: t + RESPUESTA_SEG * 1000, creada: t });
+    flash = ["exito", `¡Solicitud enviada a ${r.nombre}! Te avisaremos aquí en cuanto el restaurante la confirme (en la demo tarda unos segundos).`];
+  }
+  borrador = null; guardar(); visitasPestana = "proximas"; location.hash = "#visitas";
+}
+
+/* --- Mis visitas --- */
+let visitasPestana = "proximas", flash = null;
+VISTAS.visitas = () => {
+  const t = ahora();
+  const prox = estado.reservas.filter((r) => leer(r.fecha) > t).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const hist = estado.reservas.filter((r) => leer(r.fecha) <= t).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const lista = visitasPestana === "proximas" ? prox : hist, esProx = visitasPestana === "proximas";
+  const tarjeta = (res) => {
+    const r = REST.get(res.restaurante), f = leer(res.fecha);
+    const [txt, cls, ic] = res.estado === "PENDIENTE" ? (esProx ? ["Esperando confirmación", "aviso", "reloj"] : ["Sin confirmar", "", "reloj"]) : res.estado === "CONFIRMADA" ? [esProx ? "Confirmada" : "Visitada", "ok", "check"] : ["No disponible", "error", "equis"];
+    return `<li><article class="tarjeta-reserva" style="--marca:${r.oscuro}" aria-labelledby="res-${res.id}">
+      <div class="fecha-bloque" aria-hidden="true"><small>${DIAS[f.getDay()].slice(0, 3)}</small><strong>${f.getDate()}</strong><small>${MESES[f.getMonth()].slice(0, 3)}</small></div>
+      <div><h2 id="res-${res.id}">${esc(r.nombre)}</h2><p class="meta"><span>${ico("calendario")} ${mayus(fechaHoraLarga(f))}</span><span>${ico("personas")} ${personasTxt(res.personas)}</span></p>
+        ${res.necesidades.length ? `<p class="ayuda" style="margin:.2rem 0">Necesidades: ${etiquetas(res.necesidades)}</p>` : ""}${res.notas ? `<p class="ayuda" style="margin:.2rem 0">Notas: ${esc(res.notas)}</p>` : ""}
+        ${res.mensaje ? `<p class="msg-rest"><strong>El restaurante dice:</strong> ${esc(res.mensaje)}</p>` : res.estado === "PENDIENTE" && esProx ? `<p class="ayuda esperando"><span class="punto" aria-hidden="true"></span>El restaurante está revisando tu solicitud.</p>` : ""}
+        ${res.estado === "RECHAZADA" && esProx ? `<p class="ayuda">Puedes <strong>modificarla</strong> para elegir otro horario y enviarla de nuevo.</p>` : ""}</div>
+      <div class="tarjeta-reserva__acciones"><span class="etiqueta etiqueta--${cls}" style="justify-content:center;padding:.4rem .8rem;border-radius:12px">${ico(ic)} ${txt}</span>
+        ${esProx ? `<a class="boton boton--secundario" href="#editar-${res.id}">${ico("editar")} Modificar</a>` : `<a class="boton boton--secundario" href="#reservar-${r.id}">${ico("repetir")} Reservar de nuevo</a>`}
+        <button type="button" class="boton boton--peligro" data-accion="eliminar" data-id="${res.id}">${ico("basura")} Eliminar<span class="oculto"> reserva en ${esc(r.nombre)}</span></button></div>
+    </article></li>`;
+  };
+  return `<div class="encabezado"><h1>Mis visitas</h1><p class="subtitulo">Consulta, modifica o elimina tus reservas y revisa tus visitas anteriores.</p></div>
+  <div class="pestanas" role="tablist" aria-label="Tipo de reservas"><button role="tab" data-accion="pestana" data-p="proximas" aria-selected="${esProx}">Próximas <span class="contador">${prox.length}</span></button><button role="tab" data-accion="pestana" data-p="historial" aria-selected="${!esProx}">Visitadas <span class="contador">${hist.length}</span></button></div>
+  ${lista.length ? `<ul class="reservas" role="list">${lista.map(tarjeta).join("")}</ul>` : esProx ? vacio("calendario", "No tienes reservas próximas", "Busca un restaurante y reserva tu mesa.", `<a class="boton boton--primario" href="#buscar">${ico("buscar")} Buscar restaurantes</a>`) : vacio("calendario", "Aún no tienes visitas anteriores", "Aquí aparecerán tus reservas cuando haya pasado la fecha.")}`;
+};
+
+/* --- Favoritos --- */
+VISTAS.favoritos = () => {
+  const favs = estado.favoritos.map((id) => REST.get(id)).filter(Boolean);
+  return `<div class="encabezado"><h1>Favoritos</h1><p class="subtitulo">Tus restaurantes guardados para reservar rápido.</p></div>
+  ${favs.length ? `<ul class="banners" role="list">${favs.map((r) => `<li>${banner(r)}<div class="tras-banner"><a class="boton boton--primario" href="#reservar-${r.id}">${ico("calendario")} Reservar<span class="oculto"> en ${esc(r.nombre)}</span></a><span class="ayuda">${ico("regalo")} ${esc(r.beneficio)} (ejemplo)</span></div></li>`).join("")}</ul>`
+    : vacio("corazon", "Aún no tienes favoritos", "Toca el corazón de cualquier restaurante para guardarlo aquí.", `<a class="boton boton--primario" href="#buscar">${ico("buscar")} Buscar restaurantes</a>`)}`;
+};
+
+/* --- Perfil --- */
+let perfilErrores = {};
+VISTAS.perfil = () => {
+  const p = estado.perfil, e = perfilErrores;
+  const campo = (id, et, tipo, auto, ph) => `<div class="campo"><label for="${id}">${et}</label><input id="${id}" name="${id}" type="${tipo}" autocomplete="${auto}" placeholder="${ph}" value="${esc(p[id])}" ${e[id] ? `aria-invalid="true" aria-describedby="err-${id}"` : ""}>${e[id] ? `<p class="error" id="err-${id}">${e[id]}</p>` : ""}</div>`;
+  return `<div class="encabezado"><h1>Perfil</h1><p class="subtitulo">Tus datos de contacto, tus necesidades y cómo quieres ver la aplicación.</p></div>
+  ${almacenamiento ? "" : `<div class="mensaje mensaje--aviso">${ico("info")}<p>Este navegador no permite guardar datos: tus cambios se perderán al cerrar la página.</p></div>`}
+  <div class="columnas"><form data-form="perfil" novalidate>
+    <section class="panel"><h2 class="panel__titulo">Datos de contacto</h2><p class="ayuda">El restaurante los usaría para confirmar tu reserva.</p>
+      ${campo("nombre", "Nombre completo", "text", "name", "")}${campo("telefono", "Teléfono", "tel", "tel", "222 123 4567")}${campo("correo", "Correo electrónico", "email", "email", "nombre@correo.com")}</section>
+    <section class="panel"><h2 class="panel__titulo">¿Para quién son las reservas?</h2><p class="ayuda">Al elegir una opción marcamos sus necesidades más comunes; puedes ajustarlas abajo.</p>
+      <div class="opciones opciones--2">${Object.entries(GRUPOS).map(([k, [t, sug]]) => `<label class="opcion"><input type="checkbox" name="grupos" value="${k}" data-sugiere="${sug.join(",")}" ${p.grupos.includes(k) ? "checked" : ""}><span>${t}</span></label>`).join("")}</div></section>
+    <section class="panel"><h2 class="panel__titulo">${ico("accesible")} Mis necesidades</h2><p class="ayuda">Las usamos para mostrarte solo los lugares aptos y prellenar tus reservas.</p>
+      <div class="opciones opciones--2">${Object.entries(CARACTERISTICAS).map(([k, t]) => `<label class="opcion"><input type="checkbox" name="necesidades" value="${k}" ${p.necesidades.includes(k) ? "checked" : ""}><span>${t}</span></label>`).join("")}</div></section>
+    <section class="panel"><h2 class="panel__titulo">${ico("campana")} Recordatorios</h2>
+      <label class="opcion"><input type="checkbox" name="recordatorios" ${p.recordatorios ? "checked" : ""}><span>Recibir recordatorios de mis reservas confirmadas</span></label>
+      <fieldset id="anticipaciones" class="${p.recordatorios ? "" : "atenuado"}" style="margin-top:.8rem"><legend>¿Cuándo avisarte?</legend><div class="fila">${Object.entries(ANTICIPACIONES).map(([k, a]) => `<label class="opcion"><input type="checkbox" name="anticipaciones" value="${k}" ${p.anticipaciones.includes(k) ? "checked" : ""}><span>${a[1]}</span></label>`).join("")}</div>${e.anticipaciones ? `<p class="error">${e.anticipaciones}</p>` : ""}</fieldset>
+      <p class="ayuda">Los avisos aparecen dentro de la app y en la campana mientras la página esté abierta.</p>
+      <button type="button" class="boton boton--secundario" data-accion="prueba">${ico("campana")} Enviar aviso de prueba</button></section>
+    <div class="guardar"><button type="submit" class="boton boton--primario boton--grande">${ico("check")} Guardar cambios</button></div>
+  </form>
+  <div>
+    <section class="panel" style="text-align:center"><h2 class="panel__titulo">Foto de perfil</h2>
+      <div class="foto">${p.foto ? `<img src="${p.foto}" alt="Tu foto de perfil">` : `${ico("usuario")}<span class="oculto">Sin foto de perfil</span>`}</div>
+      <label class="boton boton--secundario boton--ancho archivo">${ico("camara")} ${p.foto ? "Cambiar foto" : "Elegir foto"}<input type="file" accept="image/*" data-campo="foto"></label>
+      <p class="ayuda" style="margin-top:.4rem">Desde la galería o la cámara de tu teléfono.</p>
+      ${p.foto ? `<button type="button" class="boton boton--texto" data-accion="quitarFoto">${ico("basura")} Quitar foto</button>` : ""}</section>
+    <section class="panel"><h2 class="panel__titulo">Apariencia</h2>
+      <fieldset><legend>Tema de color</legend><div class="fila">${[["VIBRANTE", "Vibrante", "linear-gradient(135deg,#8e2de2,#f0306f,#ffb000)"], ["AZUL", "Azul", "linear-gradient(135deg,#00c6ff,#1d4ed8)"]].map(([k, t, g]) => `<label class="opcion"><input type="radio" name="tema" data-campo="tema" value="${k}" ${p.tema === k ? "checked" : ""}><span><span class="muestra-tema" style="background:${g}" aria-hidden="true"></span>${t}</span></label>`).join("")}</div></fieldset>
+      <fieldset><legend>Tamaño del texto</legend><div class="opciones">${[["NORMAL", "Normal", 1], ["GRANDE", "Grande", 1.12], ["MUY_GRANDE", "Muy grande", 1.25]].map(([k, t, s]) => `<label class="opcion"><input type="radio" name="texto" data-campo="texto" value="${k}" ${p.texto === k ? "checked" : ""}><span style="font-size:${s}em">${t}</span></label>`).join("")}</div></fieldset>
+      <label class="opcion"><input type="checkbox" data-campo="contraste" ${p.contraste ? "checked" : ""}><span>Alto contraste<small style="color:var(--texto-suave);font-weight:400">Colores más marcados y bordes gruesos.</small></span></label></section>
+    <section class="panel"><h2 class="panel__titulo">Datos de la demo</h2><p class="ayuda">Tus datos se guardan solo en este navegador.</p>
+      <div class="acciones"><button type="button" class="boton boton--secundario" data-accion="demo">Cargar datos de demostración</button><button type="button" class="boton boton--peligro" data-accion="borrarTodo">${ico("basura")} Borrar todos mis datos</button></div></section>
+  </div></div>`;
+};
+function guardarPerfil(form) {
+  const fd = new FormData(form);
+  const d = { nombre: (fd.get("nombre") || "").replace(/\s+/g, " ").trim(), telefono: (fd.get("telefono") || "").trim(), correo: (fd.get("correo") || "").trim(), grupos: fd.getAll("grupos"), necesidades: fd.getAll("necesidades"), recordatorios: fd.get("recordatorios") === "on", anticipaciones: fd.getAll("anticipaciones") };
+  perfilErrores = validarPerfil(d);
+  if (Object.keys(perfilErrores).length) {
+    Object.assign(estado.perfil, d); render(false);
+    mostrarToast({ tipo: "rechazada", titulo: "Revisa tus datos", cuerpo: "Hay campos marcados en rojo." }, 5000);
+    document.querySelector('[aria-invalid="true"]')?.focus(); return;
+  }
+  Object.assign(estado.perfil, d); guardar(); render(false);
+  mostrarToast({ tipo: "confirmada", titulo: "Perfil guardado", cuerpo: "Tus datos se guardaron correctamente." }, 4000);
+}
+function cargarFoto(archivo) {
+  if (!archivo || !archivo.type.startsWith("image/")) { mostrarToast({ tipo: "rechazada", titulo: "Archivo no válido", cuerpo: "Elige una imagen (JPG, PNG, WEBP…)." }, 5000); return; }
+  const img = new Image(), url = URL.createObjectURL(archivo);
+  img.onload = () => {
+    const lado = 320, c = document.createElement("canvas"); c.width = c.height = lado;
+    const s = Math.min(img.width, img.height); c.getContext("2d").drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, lado, lado);
+    estado.perfil.foto = c.toDataURL("image/jpeg", 0.85); URL.revokeObjectURL(url); guardar(); pintarCabecera(); render(false);
+    mostrarToast({ tipo: "confirmada", titulo: "Foto actualizada", cuerpo: "Tu foto de perfil se guardó." }, 4000);
+  };
+  img.onerror = () => mostrarToast({ tipo: "rechazada", titulo: "No pudimos leer la imagen", cuerpo: "Prueba con otra foto." }, 5000);
+  img.src = url;
+}
+
+/* --- Avisos --- */
+VISTAS.avisos = () => {
+  const lista = estado.avisos;
+  const html = `<div class="encabezado"><h1>Avisos</h1><p class="subtitulo">Confirmaciones de los restaurantes y recordatorios de tus reservas.</p></div>
+  ${lista.length ? `<ul class="avisos" role="list">${lista.map((a) => `<li class="aviso aviso--${a.tipo}"><span class="aviso__ico">${ico({ confirmada: "check", rechazada: "equis", recordatorio: "reloj" }[a.tipo] || "campana")}</span><div><h2>${esc(a.titulo)}${a.leido ? "" : ' <span class="etiqueta etiqueta--info">Nuevo</span>'}</h2><p>${esc(a.cuerpo)}</p><p class="ayuda">${mayus(fechaHoraLarga(leer(a.creado)))}</p>${a.reserva ? `<a href="#visitas">Ver mis visitas</a>` : ""}</div></li>`).join("")}</ul>`
+    : vacio("campana", "No tienes avisos todavía", "Cuando un restaurante responda a tu reserva, lo verás aquí.")}`;
+  if (lista.some((a) => !a.leido)) { setTimeout(() => { lista.forEach((a) => { a.leido = true; }); guardar(); pintarCabecera(); }, 1500); }
+  return html;
+};
+
+/* =====================================================================
+   DATOS DE DEMOSTRACIÓN
+   ===================================================================== */
+function cargarDemo() {
+  const hoy = new Date(), dia = (n, h) => { const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() + n); return `${isoFecha(d)}T${h}`; };
+  const t = Date.now();
+  estado = estadoVacio();
+  Object.assign(estado.perfil, { nombre: "María López Hernández", telefono: "222 123 4567", correo: "maria.lopez@correo.com", grupos: ["ADULTO_MAYOR"], necesidades: ["ACCESO_SIN_ESCALONES", "SILLAS_COMODAS", "MESA_CERCA_ENTRADA"] });
+  estado.favoritos = [1, 12, 5];
+  estado.reservas = [
+    { id: 1, restaurante: 2, fecha: dia(1, "14:00"), personas: 3, necesidades: ["SILLAS_COMODAS", "MESA_CERCA_ENTRADA"], notas: "Celebramos el cumpleaños de mi mamá.", estado: "CONFIRMADA", mensaje: "¡Te esperamos! Prepararemos tu mesa según tus necesidades.", respuestaEn: null, confirmadaEn: t, creada: t },
+    { id: 2, restaurante: 6, fecha: dia(3, "19:00"), personas: 8, necesidades: [], notas: "", estado: "PENDIENTE", mensaje: null, respuestaEn: t + 6000, creada: t },
+    { id: 3, restaurante: 8, fecha: dia(5, "13:30"), personas: 2, necesidades: ["SILLAS_COMODAS"], notas: "", estado: "PENDIENTE", mensaje: null, respuestaEn: t + 12000, creada: t },
+    { id: 4, restaurante: 1, fecha: dia(-6, "14:30"), personas: 4, necesidades: ["SILLAS_COMODAS"], notas: "", estado: "CONFIRMADA", mensaje: "¡Te esperamos! Prepararemos tu mesa según tus necesidades.", respuestaEn: null, confirmadaEn: t, creada: t },
+    { id: 5, restaurante: 12, fecha: dia(-20, "13:00"), personas: 2, necesidades: [], notas: "", estado: "CONFIRMADA", mensaje: null, respuestaEn: null, confirmadaEn: t, creada: t },
+  ];
+  ["UN_DIA", "DOS_HORAS", "UNA_HORA"].forEach((k) => { estado.enviados[`4-${k}`] = true; estado.enviados[`5-${k}`] = true; });
+  estado.siguiente = 6; guardar(); pintarCabecera();
+  mostrarToast({ tipo: "prueba", titulo: "Datos de demostración cargados", cuerpo: "En unos segundos los restaurantes responderán a dos solicitudes pendientes." }, 6000);
+  visitasPestana = "proximas"; location.hash === "#visitas" ? render() : (location.hash = "#visitas");
+}
+
+/* =====================================================================
+   DIÁLOGOS
+   ===================================================================== */
+const dialogo = document.getElementById("dialogo");
+function abrirDialogo(html, alAbrir) {
+  dialogo.innerHTML = `<button type="button" class="dialogo__cerrar" data-cerrar aria-label="Cerrar">×</button>${html}`;
+  dialogo.querySelectorAll("[data-cerrar]").forEach((b) => (b.onclick = () => dialogo.close()));
+  if (typeof dialogo.showModal === "function") dialogo.showModal(); else dialogo.setAttribute("open", "");
+  alAbrir?.(dialogo);
+}
+dialogo.addEventListener("click", (e) => { if (e.target === dialogo) dialogo.close(); });
+function dialogoFiltros() {
+  abrirDialogo(`<h2 id="dialogo-titulo">${ico("filtros")} Filtros de accesibilidad</h2><p class="ayuda">Muestra solo los lugares que cuentan con todo lo que marques (datos de ejemplo).</p>
+    <div class="opciones">${Object.entries(CARACTERISTICAS).map(([k, t]) => `<label class="opcion"><input type="checkbox" value="${k}" ${filtros.c.includes(k) ? "checked" : ""}><span>${t}</span></label>`).join("")}</div>
+    <div class="acciones" style="justify-content:space-between"><button type="button" class="boton boton--texto" data-limpiar>Quitar todo</button><button type="button" class="boton boton--primario" data-aplicar>Mostrar <span data-n></span> restaurantes</button></div>`, (d) => {
+    const leerSel = () => [...d.querySelectorAll("input:checked")].map((i) => i.value);
+    const contar = () => { const prev = filtros.c; filtros.c = leerSel(); d.querySelector("[data-n]").textContent = resultados().length; filtros.c = prev; };
+    d.addEventListener("change", contar); contar();
+    d.querySelector("[data-limpiar]").onclick = () => { d.querySelectorAll("input").forEach((i) => (i.checked = false)); contar(); };
+    d.querySelector("[data-aplicar]").onclick = () => { filtros.c = leerSel(); d.close(); render(false); };
+  });
+}
+function dialogoEliminar(id) {
+  const res = estado.reservas.find((x) => x.id === id); if (!res) return;
+  const r = REST.get(res.restaurante);
+  abrirDialogo(`<h2 id="dialogo-titulo" style="color:var(--error)">${ico("alerta")} ¿Eliminar esta reserva?</h2><p><strong>${esc(r.nombre)}</strong><br>${mayus(fechaHoraLarga(leer(res.fecha)))} · ${personasTxt(res.personas)}</p><p class="ayuda">Esta acción no se puede deshacer.</p>
+    <div class="acciones" style="justify-content:flex-end"><button type="button" class="boton boton--secundario" data-cerrar autofocus>No, conservarla</button><button type="button" class="boton boton--peligro-solido" data-si>${ico("basura")} Sí, eliminar</button></div>`, (d) => {
+    d.querySelector("[data-si]").onclick = () => {
+      estado.reservas = estado.reservas.filter((x) => x.id !== id); guardar(); d.close(); pintarCabecera(); render(false);
+      mostrarToast({ tipo: "prueba", titulo: "Reserva eliminada", cuerpo: `Se eliminó la reserva en ${r.nombre}.` }, 4000);
+    };
+  });
+}
+function dialogoBorrarTodo() {
+  abrirDialogo(`<h2 id="dialogo-titulo" style="color:var(--error)">${ico("alerta")} ¿Borrar todos tus datos?</h2><p>Se borrarán tu perfil, tu foto, tus reservas, favoritos y avisos de este navegador.</p>
+    <div class="acciones" style="justify-content:flex-end"><button type="button" class="boton boton--secundario" data-cerrar autofocus>Cancelar</button><button type="button" class="boton boton--peligro-solido" data-si>Sí, borrar todo</button></div>`, (d) => {
+    d.querySelector("[data-si]").onclick = () => { estado = estadoVacio(); perfilErrores = {}; guardar(); d.close(); pintarCabecera(); location.hash = "#inicio"; render(); };
+  });
+}
+
+/* =====================================================================
+   EVENTOS (delegados) Y RENDER
+   ===================================================================== */
+contenido.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-accion]"); if (!b) return;
+  const a = b.dataset.accion, id = Number(b.dataset.id);
+  switch (a) {
+    case "fav": {
+      const i = estado.favoritos.indexOf(id), r = REST.get(id);
+      if (i >= 0) estado.favoritos.splice(i, 1); else estado.favoritos.unshift(id);
+      guardar(); const es = i < 0;
+      document.querySelectorAll(`.fav[data-id="${id}"]`).forEach((x) => { x.setAttribute("aria-pressed", String(es)); x.setAttribute("aria-label", `${es ? "Quitar" : "Guardar"} ${r.nombre} ${es ? "de" : "en"} favoritos`); });
+      mostrarToast({ tipo: es ? "confirmada" : "prueba", titulo: es ? "Guardado en favoritos" : "Quitado de favoritos", cuerpo: r.nombre }, 3500);
+      if (ruta().vista === "favoritos") render(false); else if (ruta().vista === "buscar" && filtros.fav) pintarResultados();
+      break;
+    }
+    case "cat": filtros.cat = b.dataset.cat; render(false); break;
+    case "aptos": filtros.aptos = !filtros.aptos; render(false); break;
+    case "soloFav": filtros.fav = !filtros.fav; render(false); break;
+    case "filtros": dialogoFiltros(); break;
+    case "limpiar": Object.assign(filtros, { q: "", cat: "", aptos: false, fav: false, c: [], radio: 0 }); render(false); break;
+    case "modo": filtros.modo = b.dataset.modo; render(false); break;
+    case "zoom": if (mapaReal) (Number(b.dataset.f) < 1 ? mapaReal.m.zoomIn() : mapaReal.m.zoomOut()); else mapaBuscar?.zoom(Number(b.dataset.f)); break;
+    case "gps": {
+      b.disabled = true; document.getElementById("desde").textContent = "Buscando tu ubicación…";
+      navigator.geolocation.getCurrentPosition((pos) => {
+        b.disabled = false;
+        const aqui = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (distanciaKm(aqui, { lat: 19.0433, lng: -98.1981 }) > 50) {
+          mostrarToast({ tipo: "prueba", titulo: "Estás lejos de Puebla", cuerpo: `Seguimos calculando distancias desde ${ubicacion().nombre}. Puedes elegir una zona o marcar un punto en el mapa.` }, 7000);
+        } else { estado.yo = { ...aqui, gps: true }; guardar(); }
+        pintarResultados();
+      }, () => {
+        b.disabled = false; pintarResultados(false);
+        mostrarToast({ tipo: "rechazada", titulo: "No pudimos obtener tu ubicación", cuerpo: "Revisa el permiso de ubicación del navegador, o elige una zona." }, 7000);
+      }, { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 });
+      break;
+    }
+    case "marcar": {
+      marcando = !marcando; b.setAttribute("aria-pressed", String(marcando)); document.getElementById("mapa").classList.toggle("marcando", marcando);
+      document.getElementById("nota-mapa").textContent = marcando ? "Toca en el mapa el lugar donde estás." : "Mapa esquemático de Puebla. Arrastra para moverte.";
+      break;
+    }
+    case "pin": fichaMapa(id); break;
+    case "cerrarFicha": b.closest(".ficha-mapa").remove(); document.querySelectorAll(".pin.activo, .lugar.resaltado").forEach((x) => x.classList.remove("activo", "resaltado")); break;
+    case "dia": borrador.dia = b.dataset.dia; if (!horarios(REST.get(borrador.restaurante), leer(borrador.dia)).includes(borrador.hora)) borrador.hora = ""; render(false); break;
+    case "hora": borrador.hora = b.dataset.hora; delete borrador.errores.hora; render(false); break;
+    case "personas": borrador.personas = Math.min(MAX_PERSONAS, Math.max(1, borrador.personas + Number(b.dataset.paso))); render(false); document.querySelector(`[data-accion="personas"][data-paso="${b.dataset.paso}"]`)?.focus(); break;
+    case "enviarReserva": enviarReserva(); break;
+    case "pestana": visitasPestana = b.dataset.p; render(false); break;
+    case "eliminar": dialogoEliminar(id); break;
+    case "prueba": agregarAviso("prueba", "Avisos activados", "Así te avisaremos cuando el restaurante confirme tu reserva y antes de tu visita."); guardar(); pintarCabecera(); break;
+    case "quitarFoto": estado.perfil.foto = null; guardar(); pintarCabecera(); render(false); break;
+    case "demo": cargarDemo(); break;
+    case "borrarTodo": dialogoBorrarTodo(); break;
+  }
+});
+contenido.addEventListener("change", (e) => {
+  const t = e.target, c = t.dataset.campo, p = estado.perfil;
+  if (c === "radio") { filtros.radio = Number(t.value); pintarResultados(); }
+  else if (c === "orden") { filtros.orden = t.value; pintarResultados(false); }
+  else if (c === "zona") { if (t.value) { estado.zona = t.value; estado.yo = null; guardar(); pintarResultados(); t.value = ""; } }
+  else if (c === "necesidad") { borrador.necesidades = t.checked ? [...borrador.necesidades, t.value] : borrador.necesidades.filter((x) => x !== t.value); }
+  else if (c === "foto") cargarFoto(t.files[0]);
+  else if (c === "tema" || c === "texto") { p[c] = t.value; guardar(); pintarCabecera(); }
+  else if (c === "contraste") { p.contraste = t.checked; guardar(); pintarCabecera(); }
+  else if (t.name === "grupos" && t.checked) { t.dataset.sugiere.split(",").forEach((k) => { const n = contenido.querySelector(`input[name="necesidades"][value="${k}"]`); if (n) n.checked = true; }); }
+  else if (t.name === "recordatorios") document.getElementById("anticipaciones").classList.toggle("atenuado", !t.checked);
+});
+contenido.addEventListener("input", (e) => {
+  if (e.target.dataset.campo === "notas") borrador.notas = e.target.value;
+  const r = document.getElementById("resumen"); if (r && borrador) r.textContent = `${mayus(fechaLarga(leer(borrador.dia)))}${borrador.hora ? " a las " + borrador.hora : " · falta elegir la hora"} · ${personasTxt(borrador.personas)}`;
+});
+contenido.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (e.target.dataset.form === "perfil") guardarPerfil(e.target);
+  if (e.target.dataset.form === "buscar") document.getElementById("q")?.blur();
+});
+document.querySelector("[data-saltar]").addEventListener("click", (e) => { e.preventDefault(); contenido.focus(); });
+
+function render(navegar = true) {
+  const { vista, id } = ruta();
+  document.body.dataset.vista = vista;
+  if (navegar) { mapaBuscar = null; marcando = false; if (vista !== "perfil") perfilErrores = {}; }
+  const y = window.scrollY;
+  let html = (VISTAS[vista] || VISTAS.inicio)(id);
+  if (flash && vista === "visitas") { html = `<div class="mensaje mensaje--${flash[0]}" role="status">${ico("check")}<p>${esc(flash[1])}</p></div>` + html; flash = null; }
+  cerrarMapas();
+  contenido.innerHTML = html;
+  pintarCabecera();
+  if (vista === "buscar") montarBuscar();
+  if (vista === "restaurante") montarDetalle(id);
+  document.title = `${{ inicio: "Inicio", buscar: "Buscar restaurante", visitas: "Mis visitas", favoritos: "Favoritos", perfil: "Perfil", avisos: "Avisos", restaurante: REST.get(id)?.nombre || "Restaurante", reservar: "Reservar", editar: "Modificar reserva" }[vista]} · accessfood`;
+  if (navegar) { window.scrollTo(0, 0); contenido.focus({ preventScroll: true }); } else window.scrollTo(0, y);
+}
+window.addEventListener("hashchange", () => render(true));
+render(true);
+procesar();
+setInterval(procesar, 2000);
+if ("serviceWorker" in navigator && location.protocol === "https:" && window.self === window.top) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>
